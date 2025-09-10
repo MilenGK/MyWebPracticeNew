@@ -1,0 +1,652 @@
+
+
+/* Custom CSS Variables */
+:root {
+    --color-primary: #1a73e8; /* Google Blue */
+    --color-secondary: #f3f4f6; /* Light gray */
+    --color-text-dark: #333;
+    --color-text-light: #e0e0e0;
+    --color-bg-light: #f9fafb;
+    --color-bg-dark: #1f2937; /* Darker gray */
+    --color-card-light: #ffffff;
+    --color-card-dark: #2f3e4e; /* Even darker gray for cards */
+    --color-border-light: #e5e7eb;
+    --color-border-dark: #4b5563;
+    --color-success: #10b981; /* Green */
+    --color-danger: #ef4444; /* Red */
+    --color-odds-bg: #e0f2f7; /* Light blue for odds background */
+    --color-odds-text: #0b6982; /* Darker blue for odds text */
+    --color-accent: #ff7f00; /* A vibrant orange for section titles/highlights */
+
+    /* …your existing tokens… */
+  --join-yellow:#ffd34d;
+  --shadow-sm:0 3px 12px rgba(0,0,0,.18);
+  --speed:.22s; 
+
+    --font-family: 'Inter', sans-serif;
+    --border-radius: 0.75rem; /* Rounded corners */
+    --transition-speed: 0.3s ease-in-out;
+    --shadow-light: 0 4px 8px rgba(0, 0, 0, 0.05);
+    --shadow-dark: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Base Styles */
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    line-height: 1.6;
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+
+
+
+
+
+
+/* Utility Classes */
+.wrap {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 1.5rem; /* Responsive padding */
+}
+
+.section {
+    padding: 4rem 0; /* Vertical spacing for sections */
+}
+
+.section__title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--color-primary);
+}
+
+/* Specific styling for sport section titles */
+.sport-section .section__title {
+    color: var(--color-accent); /* Use accent for sport titles */
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Header */
+.site-header {
+    background-color: var(--color-card-light);
+    padding: 1rem 0;
+    box-shadow: var(--shadow-light);
+    transition: background-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.dark-mode .site-header {
+    background-color: var(--color-card-dark);
+    box-shadow: var(--shadow-dark);
+}
+
+.site-header .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-primary);
+}
+.logo a {
+    text-decoration: none;
+    color: inherit;
+}
+.logo a:hover {
+    color: var(--color-accent);
+}
+
+.nav__link {
+    color: var(--color-text-dark);
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 1.5rem;
+    transition: color var(--transition-speed);
+}
+
+.dark-mode .nav__link {
+    color: var(--color-text-light);
+}
+
+.nav__link:hover {
+    color: var(--color-primary);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* New: Styling for Login/Register buttons in header */
+.header-controls .btn--header-auth {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+    box-shadow: none; /* No shadow by default */
+}
+.header-controls .btn--header-auth:hover {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow on hover */
+    transform: translateY(-1px);
+}
+/* Ensure dark mode styling for header buttons */
+.dark-mode .header-controls .btn--header-auth {
+    color: var(--color-text-light); /* Default text color in dark mode */
+}
+.dark-mode .header-controls .btn--header-auth.btn--ghost {
+    border-color: var(--color-border-dark); /* Dark mode ghost border */
+}
+.dark-mode .header-controls .btn--header-auth.btn--ghost:hover {
+    background-color: var(--color-border-dark); /* Dark mode ghost hover background */
+    color: var(--color-text-light);
+}
+
+
+.lang-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.5rem;
+    background-color: var(--color-card-light);
+    color: var(--color-text-dark);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+}
+
+.dark-mode .lang-select {
+    border-color: var(--color-border-dark);
+    background-color: var(--color-card-dark);
+    color: var(--color-text-light);
+}
+
+.lang-select:hover {
+    border-color: var(--color-primary);
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all var(--transition-speed);
+    text-align: center;
+    box-shadow: var(--shadow-light);
+}
+
+.btn--primary {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.btn--primary:hover:not(:disabled) {
+    background-color: #165ab7; /* Darker primary */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn--ghost {
+    background-color: transparent;
+    color: var(--color-text-dark);
+    border: 1px solid var(--color-border-light);
+}
+
+.dark-mode .btn--ghost {
+    color: var(--color-text-light);
+    border: 1px solid var(--color-border-dark);
+}
+
+.btn--ghost:hover:not(:disabled) {
+    background-color: var(--color-secondary);
+    color: var(--color-text-dark);
+}
+.dark-mode .btn--ghost:hover:not(:disabled) {
+    background-color: var(--color-border-dark);
+    color: var(--color-text-light);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+
+.hero h2 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.hero p {
+    font-size: 1.125rem;
+    margin-bottom: 2rem;
+}
+
+
+.dark-mode .match-card {
+    background-color: var(--color-card-dark);
+    box-shadow: var(--shadow-dark);
+}
+
+.match-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+.dark-mode .match-card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.match-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.match-time {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+.dark-mode .match-time {
+    color: #9ca3af;
+}
+
+.match-teams {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.odds-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.odds-button {
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    background-color: var(--color-odds-bg);
+    color: var(--color-odds-text);
+    border: 1px solid var(--color-odds-text);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all var(--transition-speed);
+    text-align: center;
+    display: flex; /* Make it a flex container */
+    flex-direction: column; /* Stack label and odd */
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+}
+/* Styling for the outcome label within the odds button */
+.odds-button .outcome-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+}
+/* Styling for the odd value within the odds button */
+.odds-button .outcome-odd {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+
+.dark-mode .odds-button {
+    background-color: #3b5066;
+    color: #a7d9f7;
+    border: 1px solid #a7d9f7;
+}
+
+.odds-button:hover:not(.selected-odd) {
+    background-color: var(--color-odds-text);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.odds-button.selected-odd {
+    background-color: var(--color-success);
+    color: white;
+    border-color: var(--color-success);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transform: scale(1.02);
+}
+
+
+
+.dark-mode .bet-slip-container {
+    background-color: var(--color-card-dark);
+    box-shadow: var(--shadow-dark);
+}
+
+.bet-slip-items {
+    min-height: 100px;
+    border: 1px dashed var(--color-border-light);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.dark-mode .bet-slip-items {
+    border: 1px dashed var(--color-border-dark);
+}
+
+.bet-slip-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.bet-slip-item:last-child {
+    border-bottom: none;
+}
+.dark-mode .bet-slip-item {
+    border-bottom: 1px solid var(--color-border-dark);
+}
+
+.bet-slip-item .details {
+    flex-grow: 1;
+}
+
+.bet-slip-item .team {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+.bet-slip-item .market { /* Added styling for market */
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    display: block; /* Ensures it's on a new line */
+}
+.dark-mode .bet-slip-item .market {
+    color: #9ca3af;
+}
+
+.bet-slip-item .odds {
+    font-weight: 600;
+    background-color: var(--color-odds-bg);
+    color: var(--color-odds-text);
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.3rem;
+    margin-left: 0.5rem;
+}
+.dark-mode .bet-slip-item .odds {
+    background-color: #3b5066;
+    color: #a7d9f7;
+}
+
+
+.remove-bet-btn {
+    background: none;
+    border: none;
+    color: var(--color-danger);
+    cursor: pointer;
+    font-size: 1.2rem;
+    margin-left: 1rem;
+    transition: color 0.2s ease-in-out;
+}
+.remove-bet-btn:hover {
+    color: #b91c1c; /* Darker red */
+}
+
+.bet-slip-summary {
+    border-top: 1px solid var(--color-border-light);
+    padding-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.dark-mode .bet-slip-summary {
+    border-top: 1px solid var(--color-border-dark);
+}
+
+.summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.125rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column; /* Stack label and input */
+    margin-bottom: 1rem;
+}
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.input-field {
+    flex-grow: 1;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.5rem; /* Slightly less rounded for inputs */
+    background-color: var(--color-secondary); /* Lighter background for inputs */
+    color: var(--color-text-dark);
+    transition: all var(--transition-speed);
+}
+.dark-mode .input-field {
+    border: 1px solid var(--color-border-dark);
+    background-color: #3b404e;
+    color: var(--color-text-light);
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+}
+
+/* Auth Forms Section */
+/* These styles will now apply to forms within the modals */
+.auth-forms-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    /* max-width: 800px; Remove max-width here as modal will control width */
+    margin: 0 auto;
+}
+@media (min-width: 768px) {
+    .auth-forms-container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
+.dark-mode .form-card {
+    background-color: var(--color-card-dark);
+    box-shadow: var(--shadow-dark);
+}
+
+.form-card-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+}
+.form-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.form-card .btn {
+    margin-top: 1rem;
+}
+
+
+
+
+/* Modal Styling (General) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.3s ease-out; /* Smooth fade in/out */
+    opacity: 0;
+    pointer-events: none; /* Allows clicks to pass through when hidden */
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto; /* Enable clicks when visible */
+}
+
+.modal-content {
+    background-color: var(--color-card-light);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-dark);
+    max-width: 450px;
+    width: 90%;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease-out;
+}
+.dark-mode .modal-content {
+    background-color: var(--color-card-dark);
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: translateY(0);
+}
+
+/* New: Specific Modal for Auth Forms */
+.auth-modal .modal-content {
+    max-width: 850px; /* Wider for two forms side-by-side */
+    padding: 2.5rem;
+}
+
+/* New: Modal Header for auth forms to match existing modal style */
+.auth-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+    margin-bottom: 2rem;
+}
+.dark-mode .auth-modal .modal-header {
+    border-bottom: 1px solid var(--color-border-dark);
+}
+.auth-modal .modal-header h4 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--color-primary);
+}
+.auth-modal .modal-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--color-text-dark);
+    transition: color 0.2s;
+}
+.dark-mode .auth-modal .modal-header .close-btn {
+    color: var(--color-text-light);
+}
+.auth-modal .modal-header .close-btn:hover {
+    color: var(--color-danger);
+}
+
+
+/* Responsive Grid Adjustments */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Adjusted for better fit */
+    gap: 1.5rem; /* Consistent gap */
+}
+@media (min-width: 768px) {
+    .grid-cols-1.md\\:grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (min-width: 1024px) {
+    .grid-cols-1.lg\\:grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+/* --- Odds format select: yellow pill, compact, non-stretch --- */
+.header-actions #oddsFormat{
+    flex:0 0 auto;
+    display:inline-flex; align-items:center;
+    height:38px; max-width:110px;
+    padding:0 28px 0 12px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:9999px;
+    background:var(--join-yellow, #ffd34d) !important;
+    color:#151515 !important; font-weight:700;
+    box-shadow:var(--shadow-sm); margin-right:10px;
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="%23151515"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat:no-repeat; background-position:right 10px center; background-size:14px 14px;
+    transition:filter var(--speed), box-shadow var(--speed), transform var(--speed);
+  }
+  .header-actions #oddsFormat:hover{ filter:brightness(1.05); }
+  .header-actions #oddsFormat:active{ transform:translateY(1px); }
+  .header-actions #oddsFormat:focus{ outline:none; box-shadow:0 0 0 2px rgba(0,0,0,.15), 0 0 0 4px rgba(255,211,77,.45); }
+  .header-actions #oddsFormat option{ color:#111; background:#fff; }
+  
+  .header-actions{
+    display:flex;
+    align-items:center;
+    gap:1rem;
+  }
+  
+  .btn-join{
+    color:#151515;
+    background:var(--join-yellow);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:9999px;
+  }
+  .btn-join:hover{ filter:brightness(1.05); }
+  
+  /* Make "Log In" match the yellow pill */
+.header-actions .btn-login{
+    color:#151515;
+    background: var(--join-yellow);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow: var(--shadow-sm);
+  }
+  .header-actions .btn-login:hover{ filter: brightness(1.05); }
+  .header-actions .btn-login:active{ transform: translateY(1px); }
+  
+
+  .btn-login{
+    color:#e9f0ef;
+    background:transparent;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:9999px;
+  }
+  .btn-login:hover{ background:rgba(255,255,255,.08); }
+  
+  .btn-icon{
+    width:38px; height:38px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.18);
+    background:transparent;
+    display:grid; place-items:center;
+  }
+  

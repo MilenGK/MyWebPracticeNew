@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mbets — Sportsbook Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* =========================
+       Design Tokens / Variables
+       ========================= */
+    :root {
+      /* Core palette (Bet365‑inspired, not identical) */
+      --header-bg: #1f6feb;            
+      --header-bg-grad: linear-gradient(90deg, #1f6feb  0%, #2563eb  50%, #1f6feb  100%);
+      --accent: #7dd3fc;               
+      --accent-strong: #38bdf8;
+      --accent-muted: #bae6fd;
+      --join-yellow: #ffd34d;
+
+      /* Surfaces */
+      --app-bg: #1f2325;               /* page background */
+      --surface: #2a2e30;              /* cards + panels */
+      --surface-alt: #262a2c;          /* slightly darker */
+      --divider: #3a3f41;
+
+      /* Text */
+      --text: #f3f5f5;
+      --text-muted: #b8c1c1;
+
+      /* Odds */
+      --odds-bg: #0f2a43;              /* teal-ish */
+      --odds-border: #2b6cb0;
+      --odds-text: #dbeafe;
+
+      /* Misc */
+      --danger: #ef5350;
+      --radius: 14px;
+      --radius-sm: 9999px;
+      --shadow: 0 6px 24px rgba(0,0,0,.25);
+      --shadow-sm: 0 3px 12px rgba(0,0,0,.18);
+      --speed: .22s;
+      --header-h: 64px;
+    }
+
+    /* =========================
+       Base / Layout
+       ========================= */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--app-bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+
+    /* =========================
+       Header
+       ========================= */
+    .site-header {
+      position: sticky; top: 0; z-index: 50;
+      height: var(--header-h);
+      background: var(--header-bg-grad);
+      box-shadow: var(--shadow-sm);
+    }
+    .header-flex { height: 100%; display: grid; grid-template-columns: 220px 1fr 240px; align-items: center; gap: 16px; }
+    .logo a { display:inline-flex; align-items:center; gap:6px; font-weight:800; letter-spacing:.2px; }
+    .logo .brand { font-size: 22px; color: #fff; }
+    .logo .brand-em { color: var(--accent); }
+
+    .nav { display:flex; justify-content:center; }
+    .nav__list { display:flex; gap: 28px; list-style: none; margin: 0; padding: 0; }
+    .nav__link { font-weight: 700; opacity: .9; padding-bottom: 6px; position: relative; }
+    .nav__link:hover { opacity: 1; }
+    .nav__link.active:after, .nav__link:focus-visible:after { content:""; position:absolute; left:0; right:0; bottom:-10px; margin:auto; width: 70%; height: 3px; background: var(--accent); border-radius: 2px; }
+
+    .header-actions { display:flex; justify-content:flex-end; align-items:center; gap: 10px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:700; padding: 8px 18px; border-radius: var(--radius-sm); border:1px solid transparent; transition: transform var(--speed), background var(--speed), color var(--speed), border var(--speed); }
+    .btn:active { transform: translateY(1px); }
+    .btn-join { color:#151515; background: var(--join-yellow); border-color: rgba(255,255,255,.18); }
+    .btn-join:hover { filter: brightness(1.05); }
+    .btn-login { color:#e9f0ef; background: transparent; border-color: rgba(255,255,255,.18); }
+    .btn-login:hover { background: rgba(255,255,255,.08); }
+    .btn-icon { width: 38px; height: 38px; border-radius: 50%; border:1px solid rgba(255,255,255,.18); background: transparent; display:grid; place-items:center; }
+
+    
+    /* =========================
+       Main 3‑column layout
+       ========================= */
+    .main { padding: 14px 0 32px; }
+    .grid-3 {
+      display: grid; gap: 14px;
+      grid-template-columns: 260px minmax(0,1fr) 340px;
+      align-items: start;
+    }
+
+    /* =========================
+       Sidebar (left)
+       ========================= */
+    aside.sidebar { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 16px; position: sticky; top: calc(var(--header-h) + 12px); max-height: calc(100vh - var(--header-h) - 24px); overflow: auto; }
+    .side-title { display:flex; align-items:center; gap:8px; font-size: 15px; font-weight: 700; margin: 8px 0 16px; color: var(--accent); }
+    .side-sub { margin: 18px 0 10px; font-size: 12px; font-weight: 800; letter-spacing:.8px; color: var(--accent); opacity: .95; }
+    .side-list { list-style:none; padding:0; margin:0; }
+    .side-item { display:flex; align-items:center; gap:10px; padding:10px 6px; border-radius: 10px; cursor: pointer; transition: background var(--speed), color var(--speed); }
+    .side-item:hover { background: var(--surface-alt); color: var(--accent); }
+    .side-item .icon { width: 18px; height: 18px; opacity: .9; }
+
+    /* =========================
+       Content (center)
+       ========================= */
+    .section-title { display:flex; align-items:center; gap:10px; font-size: 18px; font-weight:800; margin: 6px 0 12px; }
+    .pill { background: rgba(255,255,255,.06); border:1px solid var(--divider); padding:6px 10px; border-radius: 999px; font-size:12px; font-weight:700; color: var(--text-muted); }
+
+    .cards { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .card { background: var(--surface); border:1px solid var(--divider); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; display:flex; flex-direction:column; gap: 10px; }
+    .match-head { display:flex; justify-content:space-between; align-items:center; font-size: 12px; color: var(--text-muted); }
+    .teams { font-size: 18px; font-weight: 800; }
+    .market-row { display:flex; gap:8px; }
+    .odd-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px; border-radius: 12px; background: var(--odds-bg); color: var(--odds-text); border: 1px solid var(--odds-border); cursor: pointer; transition: transform var(--speed), background var(--speed), border var(--speed); text-align:center; }
+    .odd-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+    .odd-btn .lbl { font-size: 12px; opacity: .9; }
+    .odd-btn .val { font-size: 14px; font-weight: 800; }
+    .odd-btn.selected { background: var(--accent); color: #072a1f; border-color: var(--accent-strong); }
+
+    /* =========================
+       Bet Slip (right)
+       ========================= */
+    .bet-slip { background: var(--surface); border:1px solid var(--divider); border-radius: var(--radius); padding: 16px; position: sticky; top: calc(var(--header-h) + 12px); box-shadow: var(--shadow-sm); }
+    .bet-title { font-size: 16px; font-weight: 800; margin: 4px 0 12px; }
+    .slip-empty { color: var(--text-muted); text-align:center; padding: 16px; border:1px dashed var(--divider); border-radius: 12px; }
+    .slip-list { display:flex; flex-direction:column; gap: 8px; }
+    .slip-item { display:flex; gap:10px; align-items:flex-start; padding:10px; background: var(--surface-alt); border-radius: 12px; border:1px solid var(--divider); }
+    .slip-item .meta { flex:1; }
+    .slip-item .teams { font-size:14px; font-weight:700; }
+    .slip-item .market { font-size:12px; color: var(--text-muted); margin-top:4px; }
+    .slip-item .odds { font-weight:800; padding: 2px 8px; border-radius: 999px; border:1px solid var(--odds-border); background: var(--odds-bg); color: var(--odds-text); }
+    .remove { background: transparent; border:none; color: var(--danger); font-size: 18px; cursor:pointer; padding: 2px 6px; }
+
+    .slip-summary { border-top:1px solid var(--divider); margin-top: 12px; padding-top: 12px; display:flex; flex-direction:column; gap:8px; }
+    .row { display:flex; justify-content:space-between; align-items:center; }
+    .input { width:100%; padding:10px 12px; background: #1c2022; color: var(--text); border:1px solid var(--divider); border-radius: 10px; font: inherit; }
+    .place { width:100%; margin-top:8px; }
+    .muted { color: var(--text-muted); }
+
+    /* =========================
+       Modal
+       ========================= */
+    .modal { position: fixed; inset:0; background: rgba(0,0,0,.55); display:none; place-items:center; padding:16px; z-index:100; }
+    .modal.open { display:grid; }
+    .modal-card { width:min(560px, 96vw); background: var(--surface); border:1px solid var(--divider); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+    .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; }
+    .modal-head h3 { margin:0; font-size: 18px; }
+    .close-x { background:transparent; border:1px solid var(--divider); width:34px; height:34px; border-radius:50%; color:#fff; display:grid; place-items:center; cursor:pointer; }
+    .modal-body { color: var(--text-muted); }
+    .modal-body ul { margin: 10px 0 0; padding-left: 18px; }
+
+    /* =========================
+       Responsive
+       ========================= */
+    @media (max-width: 1200px) {
+      .header-flex { grid-template-columns: 180px 1fr 220px; }
+    }
+    @media (max-width: 1024px) {
+      .grid-3 { grid-template-columns: 1fr; }
+      aside.sidebar { position: relative; top: 0; max-height: none; }
+      .bet-slip { position: relative; top: 0; }
+    }
+  /* --- Extras: logo as nav toggle, mobile sidebar, auth forms, backdrop --- */
+    .logo .logo-btn{background:transparent;border:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;}
+    .nav-open .backdrop{display:block;}
+    .auth-form label{display:flex;flex-direction:column;gap:6px;margin:8px 0;}
+    .auth-form .input{margin-top:2px;}
+    .auth-form .place{margin-top:6px;}
+    @media (max-width:1024px){
+      aside.sidebar{position:fixed;left:12px;top:calc(var(--header-h) + 12px);height:calc(100vh - var(--header-h) - 24px);transform:translateX(-110%);transition:transform var(--speed);z-index:45;width:78vw;max-width:320px;}
+      .nav-open aside.sidebar{transform:translateX(0);}
+    }
+  </style>
+</head>
+<body>
+  <!-- Inline SVG sprite (simple icons) -->
+  <svg width="0" height="0" style="position:absolute; visibility:hidden">
+    <symbol id="icon-ball" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
+      <path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".35"/>
+    </symbol>
+    <symbol id="icon-tennis" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M5 12c0-5 6-5 6-10M19 12c0 5-6 5-6 10" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="icon-basket" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M2 12h20M5 6c6 4 8 4 14 0M5 18c6-4 8-4 14 0" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    </symbol>
+    <symbol id="icon-dollar" viewBox="0 0 24 24">
+      <path d="M12 2v20M7 8c0-2 2-3 5-3s5 1 5 3-2 3-5 3-5 1-5 3 2 3 5 3 5-1 5-3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4" fill="currentColor"/>
+      <g stroke="currentColor" stroke-width="2">
+        <path d="M12 1v3M12 20v3M4.22 4.22L6.34 6.34M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+      </g>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
+    </symbol>
+  </svg>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="wrap header-flex">
+      <div class="logo">
+        <button id="navToggle" class="logo-btn" aria-label="Toggle navigation">
+          <span class="brand">Mbets</span>
+        </button>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <ul class="nav__list">
+          <li><a href="#all" class="nav__link active">All Sports</a></li>
+          <li><a href="#inplay" class="nav__link">In‑Play</a></li>
+          <li><a href="#casino" class="nav__link">Casino</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <select id="oddsFormat" aria-label="Odds format">
+          <option value="us">US</option>
+          <option value="dec">DEC</option>
+          <option value="frac">FRAC</option>
+        </select>
+      
+        <button id="themeToggle" class="btn btn-icon" aria-label="Toggle theme">
+          <svg width="18" height="18"><use href="#icon-moon"/></svg>
+        </button>
+        <button class="btn btn-join" id="openSignup">Sign Up</button>
+        <button class="btn btn-login" id="openLogin">Log In</button>
+      </div>
+      
+    </div>
+  </header>
+  <div id="navBackdrop" class="backdrop" hidden></div>
+
+  <main class="main">
+    <div class="wrap grid-3">
+      <!-- Left Sidebar -->
+      <aside class="sidebar" aria-label="Sidebar">
+        <div class="side-title">
+          <svg class="icon" width="18" height="18"><use href="#icon-dollar"/></svg>
+          Offers
+        </div>
+      
+        <div class="side-sub">TRENDING</div>
+        <ul class="side-list" id="trendingList"><!-- populated by JS --></ul>
+      </aside>      
+      
+
+      <!-- Center content -->
+      <section>
+        <div class="section-title">
+          <span class="pill">Upcoming</span>
+          <span class="muted">Best odds — football, tennis, basketball</span>
+        </div>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <!-- Right Bet Slip -->
+      <aside class="bet-slip" aria-live="polite">
+        <div class="bet-title">Your Bet Slip</div>
+        <div id="slipEmpty" class="slip-empty">Your slip is empty. Pick some odds.</div>
+        <div id="slipList" class="slip-list" hidden></div>
+        <div class="slip-summary">
+          <label class="row" for="stake">
+            <span>Stake</span>
+            <input id="stake" class="input" type="number" min="0" step="1" value="10"/>
+          </label>
+          <div class="row"><span>Total Odds</span><strong id="totalOdds">1.00</strong></div>
+          <div class="row"><span>Potential Payout</span><strong id="payout">0.00</strong></div>
+          <button id="place" class="btn btn-join place" disabled>Place Bet</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="loginTitle">Log In</h3>
+        <button class="close-x" data-close="loginModal" aria-label="Close">×</button>
+      </div>
+      <form id="loginForm" class="auth-form">
+        <div id="loginExtras">
+          <p class="muted" style="text-align:center;margin-top:6px;">
+            Forgot your password?
+            <a href="#" id="forgotLink" style="color:#ff7f00;font-weight:700;">Click here</a>
+          </p>
+        
+          <div id="socialBtns" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+            <button type="button" id="fbLogin" class="btn"
+                    style="justify-content:flex-start;background:#f7f9fb;color:#111;border:1px solid var(--divider);">
+              <span style="width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;
+                           background:#1877F2;color:#fff;font-weight:800;">f</span>
+              <span style="margin-left:10px;">Login with Facebook</span>
+            </button>
+        
+            <button type="button" id="gLogin" class="btn"
+                    style="justify-content:flex-start;background:#f7f9fb;color:#111;border:1px solid var(--divider);">
+              <span style="width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;
+                           background:#fff;border:1px solid #dadce0;">
+                <!-- Official multicolor Google mark -->
+                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.39 1.23 8.34 3.24l6.16-6.16C34.6 2.54 29.77 0 24 0 14.64 0 6.51 5.22 2.58 13.19l7.31 5.7C11.48 12.65 17.19 9.5 24 9.5z"/>
+                  <path fill="#FBBC05" d="M46.5 24.5c0-1.54-.15-3.02-.43-4.5H24v8.51h12.65c-.54 2.9-2.17 5.37-4.6 7.02l7.04 5.47C43.73 37.08 46.5 31.21 46.5 24.5z"/>
+                  <path fill="#34A853" d="M9.89 28.61a14.49 14.49 0 0 1 0-9.22l-7.31-5.7C.93 16.44 0 20.11 0 24c0 3.89.93 7.56 2.58 10.81l7.31-5.7z"/>
+                  <path fill="#4285F4" d="M24 48c6.48 0 11.94-2.14 15.92-5.8l-7.04-5.47c-2.06 1.39-4.71 2.23-8.88 2.23-6.81 0-12.52-3.15-14.11-8.31l-7.31 5.7C6.51 42.78 14.64 48 24 48z"/>
+                </svg>
+              </span>
+              <span style="margin-left:10px;">Login with Google</span>
+            </button>
+          </div>
+        </div>
+        
+        <label>
+          <span>Email</span>
+          <input type="email" id="loginEmail" class="input" required />
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" id="loginPassword" class="input" required />
+        </label>
+        <label class="row" style="gap:8px; align-items:center;">
+          <input type="checkbox" id="loginRemember" />
+          <span class="muted">Remember me</span>
+        </label>
+        <button class="btn btn-join place" type="submit">Log In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sign Up Modal -->
+  <div id="signupModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="signupTitle" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="signupTitle">Sign Up</h3>
+        <button class="close-x" data-close="signupModal" aria-label="Close">×</button>
+      </div>
+      <form id="signupForm" class="auth-form" novalidate>
+        <div class="row" style="gap:10px;">
+          <label style="flex:1">
+            <span>First name</span>
+            <input type="text" id="suFirst" class="input" autocomplete="given-name" required />
+          </label>
+          <label style="flex:1">
+            <span>Last name</span>
+            <input type="text" id="suLast" class="input" autocomplete="family-name" required />
+          </label>
+        </div>
+      
+        <label>
+          <span>Birth date</span>
+          <input type="date" id="suDob" class="input" required />
+        </label>
+      
+        <label>
+          <span>Email</span>
+          <input type="email" id="suEmail" class="input" autocomplete="email" required />
+        </label>
+      
+        <label>
+          <span>Password</span>
+          <input type="password" id="suPassword" class="input" minlength="8" autocomplete="new-password" required />
+        </label>
+      
+        <label>
+          <span>Repeat password</span>
+          <input type="password" id="suConfirm" class="input" minlength="8" autocomplete="new-password" required />
+        </label>
+      
+        <label class="row" style="gap:8px; align-items:center;">
+          <input type="checkbox" id="suRemember" />
+          <span class="muted">Remember me</span>
+        </label>
+      
+        <label class="row" style="gap:8px; align-items:center;">
+          <input type="checkbox" id="suTerms" required />
+          <span class="muted">I accept the Terms & Conditions</span>
+        </label>
+      
+        <button class="btn btn-join place" type="submit">Create Account</button>
+      </form>
+      
+    </div>
+  </div>
+
+  <!-- Message Modal -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="mTitle">Message</h3>
+        <button class="close-x" id="mClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="mBody"></div>
+    </div>
+  </div>
+  
+
+  <script defer src="./script.js"></script>
+</body>
+</html>
