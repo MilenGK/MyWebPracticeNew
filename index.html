@@ -1,293 +1,432 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mbets — Sportsbook Demo</title>
+  <title>BetNextGen — Sportsbook Demo</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <link rel="stylesheet" href="./style.css">
-  <style>
-    /* =========================
-       Design Tokens / Variables
-       ========================= */
-    :root {
-      /* Core palette (Bet365‑inspired, not identical) */
-      --header-bg: #1f6feb;            
-      --header-bg-grad: linear-gradient(90deg, #1f6feb  0%, #2563eb  50%, #1f6feb  100%);
-      --accent: #7dd3fc;               
-      --accent-strong: #38bdf8;
-      --accent-muted: #bae6fd;
-      --join-yellow: #ffd34d;
 
-      /* Surfaces */
-      --app-bg: #1f2325;               /* page background */
-      --surface: #2a2e30;              /* cards + panels */
-      --surface-alt: #262a2c;          /* slightly darker */
-      --divider: #3a3f41;
-
-      /* Text */
-      --text: #f3f5f5;
-      --text-muted: #b8c1c1;
-
-      /* Odds */
-      --odds-bg: #0f2a43;              /* teal-ish */
-      --odds-border: #2b6cb0;
-      --odds-text: #dbeafe;
-
-      /* Misc */
-      --danger: #ef5350;
-      --radius: 14px;
-      --radius-sm: 9999px;
-      --shadow: 0 6px 24px rgba(0,0,0,.25);
-      --shadow-sm: 0 3px 12px rgba(0,0,0,.18);
-      --speed: .22s;
-      --header-h: 64px;
-    }
-
-    /* =========================
-       Base / Layout
-       ========================= */
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--app-bg);
-      color: var(--text);
-      line-height: 1.45;
-    }
-    a { color: inherit; text-decoration: none; }
-    .wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
-
-    /* =========================
-       Header
-       ========================= */
-    .site-header {
-      position: sticky; top: 0; z-index: 50;
-      height: var(--header-h);
-      background: var(--header-bg-grad);
-      box-shadow: var(--shadow-sm);
-    }
-    .header-flex { height: 100%; display: grid; grid-template-columns: 220px 1fr 240px; align-items: center; gap: 16px; }
-    .logo a { display:inline-flex; align-items:center; gap:6px; font-weight:800; letter-spacing:.2px; }
-    .logo .brand { font-size: 22px; color: #fff; }
-    .logo .brand-em { color: var(--accent); }
-
-    .nav { display:flex; justify-content:center; }
-    .nav__list { display:flex; gap: 28px; list-style: none; margin: 0; padding: 0; }
-    .nav__link { font-weight: 700; opacity: .9; padding-bottom: 6px; position: relative; }
-    .nav__link:hover { opacity: 1; }
-    .nav__link.active:after, .nav__link:focus-visible:after { content:""; position:absolute; left:0; right:0; bottom:-10px; margin:auto; width: 70%; height: 3px; background: var(--accent); border-radius: 2px; }
-
-    .header-actions { display:flex; justify-content:flex-end; align-items:center; gap: 10px; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:700; padding: 8px 18px; border-radius: var(--radius-sm); border:1px solid transparent; transition: transform var(--speed), background var(--speed), color var(--speed), border var(--speed); }
-    .btn:active { transform: translateY(1px); }
-    .btn-join { color:#151515; background: var(--join-yellow); border-color: rgba(255,255,255,.18); }
-    .btn-join:hover { filter: brightness(1.05); }
-    .btn-login { color:#e9f0ef; background: transparent; border-color: rgba(255,255,255,.18); }
-    .btn-login:hover { background: rgba(255,255,255,.08); }
-    .btn-icon { width: 38px; height: 38px; border-radius: 50%; border:1px solid rgba(255,255,255,.18); background: transparent; display:grid; place-items:center; }
-
-    
-    /* =========================
-       Main 3‑column layout
-       ========================= */
-    .main { padding: 14px 0 32px; }
-    .grid-3 {
-      display: grid; gap: 14px;
-      grid-template-columns: 260px minmax(0,1fr) 340px;
-      align-items: start;
-    }
-
-    /* =========================
-       Sidebar (left)
-       ========================= */
-    aside.sidebar { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 16px; position: sticky; top: calc(var(--header-h) + 12px); max-height: calc(100vh - var(--header-h) - 24px); overflow: auto; }
-    .side-title { display:flex; align-items:center; gap:8px; font-size: 15px; font-weight: 700; margin: 8px 0 16px; color: var(--accent); }
-    .side-sub { margin: 18px 0 10px; font-size: 12px; font-weight: 800; letter-spacing:.8px; color: var(--accent); opacity: .95; }
-    .side-list { list-style:none; padding:0; margin:0; }
-    .side-item { display:flex; align-items:center; gap:10px; padding:10px 6px; border-radius: 10px; cursor: pointer; transition: background var(--speed), color var(--speed); }
-    .side-item:hover { background: var(--surface-alt); color: var(--accent); }
-    .side-item .icon { width: 18px; height: 18px; opacity: .9; }
-
-    /* =========================
-       Content (center)
-       ========================= */
-    .section-title { display:flex; align-items:center; gap:10px; font-size: 18px; font-weight:800; margin: 6px 0 12px; }
-    .pill { background: rgba(255,255,255,.06); border:1px solid var(--divider); padding:6px 10px; border-radius: 999px; font-size:12px; font-weight:700; color: var(--text-muted); }
-
-    .cards { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-    .card { background: var(--surface); border:1px solid var(--divider); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; display:flex; flex-direction:column; gap: 10px; }
-    .match-head { display:flex; justify-content:space-between; align-items:center; font-size: 12px; color: var(--text-muted); }
-    .teams { font-size: 18px; font-weight: 800; }
-    .market-row { display:flex; gap:8px; }
-    .odd-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px; border-radius: 12px; background: var(--odds-bg); color: var(--odds-text); border: 1px solid var(--odds-border); cursor: pointer; transition: transform var(--speed), background var(--speed), border var(--speed); text-align:center; }
-    .odd-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
-    .odd-btn .lbl { font-size: 12px; opacity: .9; }
-    .odd-btn .val { font-size: 14px; font-weight: 800; }
-    .odd-btn.selected { background: var(--accent); color: #072a1f; border-color: var(--accent-strong); }
-
-    /* =========================
-       Bet Slip (right)
-       ========================= */
-    .bet-slip { background: var(--surface); border:1px solid var(--divider); border-radius: var(--radius); padding: 16px; position: sticky; top: calc(var(--header-h) + 12px); box-shadow: var(--shadow-sm); }
-    .bet-title { font-size: 16px; font-weight: 800; margin: 4px 0 12px; }
-    .slip-empty { color: var(--text-muted); text-align:center; padding: 16px; border:1px dashed var(--divider); border-radius: 12px; }
-    .slip-list { display:flex; flex-direction:column; gap: 8px; }
-    .slip-item { display:flex; gap:10px; align-items:flex-start; padding:10px; background: var(--surface-alt); border-radius: 12px; border:1px solid var(--divider); }
-    .slip-item .meta { flex:1; }
-    .slip-item .teams { font-size:14px; font-weight:700; }
-    .slip-item .market { font-size:12px; color: var(--text-muted); margin-top:4px; }
-    .slip-item .odds { font-weight:800; padding: 2px 8px; border-radius: 999px; border:1px solid var(--odds-border); background: var(--odds-bg); color: var(--odds-text); }
-    .remove { background: transparent; border:none; color: var(--danger); font-size: 18px; cursor:pointer; padding: 2px 6px; }
-
-    .slip-summary { border-top:1px solid var(--divider); margin-top: 12px; padding-top: 12px; display:flex; flex-direction:column; gap:8px; }
-    .row { display:flex; justify-content:space-between; align-items:center; }
-    .input { width:100%; padding:10px 12px; background: #1c2022; color: var(--text); border:1px solid var(--divider); border-radius: 10px; font: inherit; }
-    .place { width:100%; margin-top:8px; }
-    .muted { color: var(--text-muted); }
-
-    /* =========================
-       Modal
-       ========================= */
-    .modal { position: fixed; inset:0; background: rgba(0,0,0,.55); display:none; place-items:center; padding:16px; z-index:100; }
-    .modal.open { display:grid; }
-    .modal-card { width:min(560px, 96vw); background: var(--surface); border:1px solid var(--divider); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
-    .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; }
-    .modal-head h3 { margin:0; font-size: 18px; }
-    .close-x { background:transparent; border:1px solid var(--divider); width:34px; height:34px; border-radius:50%; color:#fff; display:grid; place-items:center; cursor:pointer; }
-    .modal-body { color: var(--text-muted); }
-    .modal-body ul { margin: 10px 0 0; padding-left: 18px; }
-
-    /* =========================
-       Responsive
-       ========================= */
-    @media (max-width: 1200px) {
-      .header-flex { grid-template-columns: 180px 1fr 220px; }
-    }
-    @media (max-width: 1024px) {
-      .grid-3 { grid-template-columns: 1fr; }
-      aside.sidebar { position: relative; top: 0; max-height: none; }
-      .bet-slip { position: relative; top: 0; }
-    }
-  /* --- Extras: logo as nav toggle, mobile sidebar, auth forms, backdrop --- */
-    .logo .logo-btn{background:transparent;border:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
-    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;}
-    .nav-open .backdrop{display:block;}
-    .auth-form label{display:flex;flex-direction:column;gap:6px;margin:8px 0;}
-    .auth-form .input{margin-top:2px;}
-    .auth-form .place{margin-top:6px;}
-    @media (max-width:1024px){
-      aside.sidebar{position:fixed;left:12px;top:calc(var(--header-h) + 12px);height:calc(100vh - var(--header-h) - 24px);transform:translateX(-110%);transition:transform var(--speed);z-index:45;width:78vw;max-width:320px;}
-      .nav-open aside.sidebar{transform:translateX(0);}
-    }
-  </style>
 </head>
+
 <body>
-  <!-- Inline SVG sprite (simple icons) -->
-  <svg width="0" height="0" style="position:absolute; visibility:hidden">
-    <symbol id="icon-ball" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" />
-      <path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".35"/>
-    </symbol>
-    <symbol id="icon-tennis" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
-      <path d="M5 12c0-5 6-5 6-10M19 12c0 5-6 5-6 10" fill="none" stroke="currentColor" stroke-width="1.6"/>
-    </symbol>
-    <symbol id="icon-basket" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
-      <path d="M2 12h20M5 6c6 4 8 4 14 0M5 18c6-4 8-4 14 0" fill="none" stroke="currentColor" stroke-width="1.4"/>
-    </symbol>
-    <symbol id="icon-dollar" viewBox="0 0 24 24">
-      <path d="M12 2v20M7 8c0-2 2-3 5-3s5 1 5 3-2 3-5 3-5 1-5 3 2 3 5 3 5-1 5-3" fill="none" stroke="currentColor" stroke-width="1.6"/>
-    </symbol>
-    <symbol id="icon-sun" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="4" fill="currentColor"/>
-      <g stroke="currentColor" stroke-width="2">
-        <path d="M12 1v3M12 20v3M4.22 4.22L6.34 6.34M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
-      </g>
-    </symbol>
-    <symbol id="icon-moon" viewBox="0 0 24 24">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
-    </symbol>
-  </svg>
 
   <!-- Header -->
   <header class="site-header">
+
     <div class="wrap header-flex">
       <div class="logo">
         <button id="navToggle" class="logo-btn" aria-label="Toggle navigation">
-          <span class="brand">Mbets</span>
+          <span class="brand">BetNextGen</span>
         </button>
       </div>
 
       <nav class="nav" aria-label="Primary">
         <ul class="nav__list">
+          <li><a href="#inplay" class="nav__link">In Play</a></li>
           <li><a href="#all" class="nav__link active">All Sports</a></li>
-          <li><a href="#inplay" class="nav__link">In‑Play</a></li>
           <li><a href="#casino" class="nav__link">Casino</a></li>
+          <li><a href="#social" class="nav__link">Social</a></li>
+          <li><a href="#ask_ai" class="nav__link">Ask AI <span class="new-badge">New</span></a></li>
         </ul>
       </nav>
 
       <div class="header-actions">
-        <select id="oddsFormat" aria-label="Odds format">
-          <option value="us">US</option>
-          <option value="dec">DEC</option>
-          <option value="frac">FRAC</option>
-        </select>
-      
-        <button id="themeToggle" class="btn btn-icon" aria-label="Toggle theme">
-          <svg width="18" height="18"><use href="#icon-moon"/></svg>
+
+        <div id="authButtons">
+          <button class="btn btn-join" id="openSignup">Sign Up</button>
+          <button class="btn btn-login" id="openLogin">Log In</button>
+        </div>
+
+        <!-- My Bets Icon (keep simple) -->
+        <button class="my-bets-btn" id="myBetsBtn">
+          <span>My Bets</span>
         </button>
-        <button class="btn btn-join" id="openSignup">Sign Up</button>
-        <button class="btn btn-login" id="openLogin">Log In</button>
-      </div>
-      
-    </div>
+
+        <!-- Wallet Ballance  -->
+        <div class="wallet-balance" id="walletBalance">
+          <span class="balance-amount">$0.00</span>
+        </div>
+
+        <!-- NEW: Settings Dropdown - ADD THIS -->
+        <div class="settings-dropdown-wrapper">
+          <button id="settingsToggle" class="settings-btn" aria-label="Settings">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6m0 6v6M23 12h-6m-6 0H1" />
+            </svg>
+          </button>
+
+          <div id="settingsDropdown" class="settings-dropdown hidden">
+            <div class="settings-item">
+              <span class="settings-label">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path
+                    d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+                Language
+              </span>
+              <select class="settings-select">
+                <option value="en">English</option>
+                <option value="bg">Български</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="fr">🇫🇷 Français</option>
+                <option value="it">🇮🇹 Italiano</option>
+              </select>
+            </div>
+
+            <div class="settings-item">
+              <span class="settings-label">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2m0 16v2" />
+                </svg>
+                Theme
+              </span>
+              <button id="themeToggleBtn" class="settings-toggle-btn">
+                <span id="themeText">Dark</span>
+              </button>
+            </div>
+
+            <div class="settings-item">
+              <span class="settings-label">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                Odds
+              </span>
+              <select class="settings-select" id="oddsDropdown">
+                <option value="dec">Decimal</option>
+                <option value="frac">Fractional</option>
+                <option value="us">American</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Promotions Icon -->
+        <button id="promotionsBtn" class="promotions-btn" title="Promotions">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+        </button>
+
+        <!-- Profile Wrapper (hidden by default when logged out) -->
+        <div id="profileWrapper" class="hidden">
+          <button id="profileToggleBtn" class="profile-avatar-btn">
+            <div class="avatar">
+              <span class="avatar-initials">GV</span>
+              <span class="status-dot"></span>
+              <span class="dropdown-icon">▾</span>
+            </div>
+          </button>
+
+          <!-- Profile Panel -->
+          <div id="profilePanel" class="profile-panel">
+            <div class="profile-header">
+              <div>
+                <div class="fullname" id="fullnameDisplay">Full Name</div>
+                <div class="username" id="usernameDisplay">@username</div>
+                <div class="balance" id="userBalance">0.00 лв</div>
+              </div>
+              <button class="deposit-btn">Deposit</button>
+            </div>
+
+            <div class="balance-info">
+              <div><strong>Withdrawable:</strong> <span id="withdrawable">0.00 лв</span></div>
+              <div><strong>Bet Credits:</strong> <span id="credits">0.00 лв</span></div>
+            </div>
+
+            <div class="profile-tabs">
+              <button class="tab active">Account</button>
+              <button class="tab">My Offers</button>
+            </div>
+
+            <div class="profile-grid">
+              <div class="grid-item"><i class="fa-solid fa-building-columns"></i> Bank</div>
+              <div class="grid-item with-badge">
+                <i class="fa-solid fa-envelope"></i> Messages <span class="badge">1</span>
+              </div>
+              <div class="grid-item"><i class="fa-solid fa-user"></i> My Account</div>
+              <div class="grid-item"><i class="fa-solid fa-shield-halved"></i> Gambling Controls</div>
+              <div class="grid-item"><i class="fa-solid fa-chart-line"></i> My Activity</div>
+              <div class="grid-item"><i class="fa-solid fa-clock-rotate-left"></i> History</div>
+            </div>
+
+            <div class="profile-footer">
+              <div>Responsible Gambling</div>
+              <div>Help</div>
+            </div>
+            <!-- Add logout button here -->
+            <button id="logoutBtn" class="profile-logout-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Log Out
+            </button>
+          </div>
+
+        </div>
+
+
+
+
+
+
+
+
+
+
   </header>
-  <div id="navBackdrop" class="backdrop" hidden></div>
 
-  <main class="main">
-    <div class="wrap grid-3">
-      <!-- Left Sidebar -->
-      <aside class="sidebar" aria-label="Sidebar">
-        <div class="side-title">
-          <svg class="icon" width="18" height="18"><use href="#icon-dollar"/></svg>
-          Offers
-        </div>
-      
-        <div class="side-sub">TRENDING</div>
-        <ul class="side-list" id="trendingList"><!-- populated by JS --></ul>
-      </aside>      
-      
-
-      <!-- Center content -->
-      <section>
-        <div class="section-title">
-          <span class="pill">Upcoming</span>
-          <span class="muted">Best odds — football, tennis, basketball</span>
-        </div>
-        <div class="cards" id="cards"></div>
-      </section>
-
-      <!-- Right Bet Slip -->
-      <aside class="bet-slip" aria-live="polite">
-        <div class="bet-title">Your Bet Slip</div>
-        <div id="slipEmpty" class="slip-empty">Your slip is empty. Pick some odds.</div>
-        <div id="slipList" class="slip-list" hidden></div>
-        <div class="slip-summary">
-          <label class="row" for="stake">
-            <span>Stake</span>
-            <input id="stake" class="input" type="number" min="0" step="1" value="10"/>
-          </label>
-          <div class="row"><span>Total Odds</span><strong id="totalOdds">1.00</strong></div>
-          <div class="row"><span>Potential Payout</span><strong id="payout">0.00</strong></div>
-          <button id="place" class="btn btn-join place" disabled>Place Bet</button>
-        </div>
-      </aside>
+  <!-- Search Bar Section -->
+  <div class="search-bar-section">
+    <div class="wrap">
+      <div class="search-container">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+          <path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <input type="text" class="search-input" placeholder="Search for events, teams, or leagues..."
+          id="mainSearchInput" />
+        <button class="search-btn-inline">Search</button>
+      </div>
     </div>
-  </main>
+  </div>
+
+  <!-- Sign Up Modal -->
+  <div id="signupModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="signupTitle" aria-hidden="true">
+    <div class="modal-card signup-modal">
+      <div class="modal-head">
+        <h3 id="signupTitle">Create Account</h3>
+        <button class="close-x" data-close="signupModal" aria-label="Close">×</button>
+      </div>
+
+      <!-- Progress indicator -->
+      <div class="signup-progress">
+        <div class="progress-step active" data-step="1">
+          <span class="step-number">1</span>
+          <span class="step-label">Personal</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="2">
+          <span class="step-number">2</span>
+          <span class="step-label">Account</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="3">
+          <span class="step-number">3</span>
+          <span class="step-label">Verify</span>
+        </div>
+      </div>
+
+      <form id="signupForm" class="auth-form" novalidate>
+        <!-- Step 1: Personal Information -->
+        <div class="form-step active" data-step="1">
+          <div class="form-row">
+            <div class="form-field">
+              <label for="suFirst">First name</label>
+              <input type="text" id="suFirst" class="input" autocomplete="given-name" required />
+              <span class="field-error" id="firstError"></span>
+            </div>
+            <div class="form-field">
+              <label for="suLast">Last name</label>
+              <input type="text" id="suLast" class="input" autocomplete="family-name" required />
+              <span class="field-error" id="lastError"></span>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="suDob">Date of birth</label>
+            <input type="date" id="suDob" class="input" required />
+            <span class="field-hint">You must be 18+ to register</span>
+            <span class="field-error" id="dobError"></span>
+          </div>
+
+          <div class="form-field">
+            <label for="suCountry">Country</label>
+            <select id="suCountry" class="input" required>
+              <option value="" disabled selected>Select your country</option> <!-- ✅ Added disabled -->
+              <option value="BG">🇧🇬 Bulgaria</option>
+              <option value="UK">🇬🇧 United Kingdom</option>
+              <option value="US">🇺🇸 United States</option>
+              <option value="DE">🇩🇪 Germany</option>
+              <option value="FR">🇫🇷 France</option>
+              <option value="ES">🇪🇸 Spain</option>
+              <option value="IT">🇮🇹 Italy</option>
+            </select>
+            <span class="field-error" id="countryError"></span>
+          </div>
+
+          <!-- ADD this after the Country field, before the Continue button -->
+          <div class="form-field">
+            <label for="suGender">Gender</label>
+            <select id="suGender" class="input" required>
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Prefer not to say</option>
+            </select>
+            <span class="field-error" id="genderError"></span>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-next" data-next="2">
+            Continue
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Step 2: Account Details -->
+        <div class="form-step" data-step="2">
+          <div class="form-field">
+            <label for="suEmail">Email address</label>
+            <input type="email" id="suEmail" class="input" autocomplete="email" required />
+            <span class="field-error" id="emailError"></span>
+          </div>
+
+          <div class="form-field">
+            <label for="suUsername">Username</label>
+            <input type="text" id="suUsername" class="input" autocomplete="username" required />
+            <span class="field-hint">3-20 characters, letters and numbers only</span>
+            <span class="field-error" id="usernameError"></span>
+          </div>
+
+          <div class="form-field">
+            <label for="suPassword">Password</label>
+            <div class="password-field">
+              <input type="password" id="suPassword" class="input" autocomplete="new-password" required />
+              <button type="button" class="password-toggle" data-target="suPassword">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+            <div class="password-strength">
+              <div class="strength-bar" id="strengthBar"></div>
+            </div>
+            <span class="field-hint">Minimum 8 characters with mixed case and numbers</span>
+            <span class="field-error" id="passwordError"></span>
+          </div>
+
+          <div class="form-field">
+            <label for="suConfirm">Confirm password</label>
+            <div class="password-field">
+              <input type="password" id="suConfirm" class="input" autocomplete="new-password" required />
+              <button type="button" class="password-toggle" data-target="suConfirm">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+            <span class="field-error" id="confirmError"></span>
+          </div>
+
+          <div class="form-nav">
+            <button type="button" class="btn btn-ghost btn-back" data-prev="1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Back
+            </button>
+            <button type="button" class="btn btn-primary btn-next" data-next="3">
+              Continue
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Verification & Terms -->
+        <div class="form-step" data-step="3">
+          <div class="form-field">
+            <label for="suPromo">Promo code (optional)</label>
+            <input type="text" id="suPromo" class="input" placeholder="Enter promo code" />
+          </div>
+
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="suTerms" required />
+              <span class="checkbox-custom"></span>
+              <span>I accept the <a href="#" class="link">Terms & Conditions</a> and <a href="#" class="link">Privacy
+                  Policy</a></span>
+            </label>
+            <span class="field-error" id="termsError"></span>
+          </div>
+
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="suMarketing" />
+              <span class="checkbox-custom"></span>
+              <span>Send me promotions and betting tips via email</span>
+            </label>
+          </div>
+
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="suRemember" />
+              <span class="checkbox-custom"></span>
+              <span>Remember me on this device</span>
+            </label>
+          </div>
+
+          <div class="form-nav">
+            <button type="button" class="btn btn-ghost btn-back" data-prev="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Back
+            </button>
+            <button type="submit" class="btn btn-primary">
+              Create Account
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Social Sign-up Options -->
+      <div class="social-signup">
+        <div class="divider-text">Or sign up with</div>
+        <div class="social-buttons">
+          <button type="button" class="social-btn" id="googleSignup">
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#EA4335"
+                d="M24 9.5c3.54 0 6.39 1.23 8.34 3.24l6.16-6.16C34.6 2.54 29.77 0 24 0 14.64 0 6.51 5.22 2.58 13.19l7.31 5.7C11.48 12.65 17.19 9.5 24 9.5z" />
+              <path fill="#FBBC05"
+                d="M46.5 24.5c0-1.54-.15-3.02-.43-4.5H24v8.51h12.65c-.54 2.9-2.17 5.37-4.6 7.02l7.04 5.47C43.73 37.08 46.5 31.21 46.5 24.5z" />
+              <path fill="#34A853"
+                d="M9.89 28.61a14.49 14.49 0 0 1 0-9.22l-7.31-5.7C.93 16.44 0 20.11 0 24c0 3.89.93 7.56 2.58 10.81l7.31-5.7z" />
+              <path fill="#4285F4"
+                d="M24 48c6.48 0 11.94-2.14 15.92-5.8l-7.04-5.47c-2.06 1.39-4.71 2.23-8.88 2.23-6.81 0-12.52-3.15-14.11-8.31l-7.31 5.7C6.51 42.78 14.64 48 24 48z" />
+            </svg>
+            Google
+          </button>
+          <button type="button" class="social-btn" id="facebookSignup">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
+              <path
+                d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+            </svg>
+            Facebook
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Login Modal -->
   <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
@@ -302,32 +441,36 @@
             Forgot your password?
             <a href="#" id="forgotLink" style="color:#ff7f00;font-weight:700;">Click here</a>
           </p>
-        
+
           <div id="socialBtns" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
             <button type="button" id="fbLogin" class="btn"
-                    style="justify-content:flex-start;background:#f7f9fb;color:#111;border:1px solid var(--divider);">
+              style="justify-content:flex-start;background:#f7f9fb;color:#111;border:1px solid var(--divider);">
               <span style="width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;
-                           background:#1877F2;color:#fff;font-weight:800;">f</span>
+                   background:#1877F2;color:#fff;font-weight:800;">f</span>
               <span style="margin-left:10px;">Login with Facebook</span>
             </button>
-        
+
             <button type="button" id="gLogin" class="btn"
-                    style="justify-content:flex-start;background:#f7f9fb;color:#111;border:1px solid var(--divider);">
+              style="justify-content:flex-start;background:#f7f9fb;color:#111;border:1px solid var(--divider);">
               <span style="width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;
-                           background:#fff;border:1px solid #dadce0;">
+                   background:#fff;border:1px solid #dadce0;">
                 <!-- Official multicolor Google mark -->
                 <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.39 1.23 8.34 3.24l6.16-6.16C34.6 2.54 29.77 0 24 0 14.64 0 6.51 5.22 2.58 13.19l7.31 5.7C11.48 12.65 17.19 9.5 24 9.5z"/>
-                  <path fill="#FBBC05" d="M46.5 24.5c0-1.54-.15-3.02-.43-4.5H24v8.51h12.65c-.54 2.9-2.17 5.37-4.6 7.02l7.04 5.47C43.73 37.08 46.5 31.21 46.5 24.5z"/>
-                  <path fill="#34A853" d="M9.89 28.61a14.49 14.49 0 0 1 0-9.22l-7.31-5.7C.93 16.44 0 20.11 0 24c0 3.89.93 7.56 2.58 10.81l7.31-5.7z"/>
-                  <path fill="#4285F4" d="M24 48c6.48 0 11.94-2.14 15.92-5.8l-7.04-5.47c-2.06 1.39-4.71 2.23-8.88 2.23-6.81 0-12.52-3.15-14.11-8.31l-7.31 5.7C6.51 42.78 14.64 48 24 48z"/>
+                  <path fill="#EA4335"
+                    d="M24 9.5c3.54 0 6.39 1.23 8.34 3.24l6.16-6.16C34.6 2.54 29.77 0 24 0 14.64 0 6.51 5.22 2.58 13.19l7.31 5.7C11.48 12.65 17.19 9.5 24 9.5z" />
+                  <path fill="#FBBC05"
+                    d="M46.5 24.5c0-1.54-.15-3.02-.43-4.5H24v8.51h12.65c-.54 2.9-2.17 5.37-4.6 7.02l7.04 5.47C43.73 37.08 46.5 31.21 46.5 24.5z" />
+                  <path fill="#34A853"
+                    d="M9.89 28.61a14.49 14.49 0 0 1 0-9.22l-7.31-5.7C.93 16.44 0 20.11 0 24c0 3.89.93 7.56 2.58 10.81l7.31-5.7z" />
+                  <path fill="#4285F4"
+                    d="M24 48c6.48 0 11.94-2.14 15.92-5.8l-7.04-5.47c-2.06 1.39-4.71 2.23-8.88 2.23-6.81 0-12.52-3.15-14.11-8.31l-7.31 5.7C6.51 42.78 14.64 48 24 48z" />
                 </svg>
               </span>
               <span style="margin-left:10px;">Login with Google</span>
             </button>
           </div>
         </div>
-        
+
         <label>
           <span>Email</span>
           <input type="email" id="loginEmail" class="input" required />
@@ -345,73 +488,1963 @@
     </div>
   </div>
 
-  <!-- Sign Up Modal -->
-  <div id="signupModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="signupTitle" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3 id="signupTitle">Sign Up</h3>
-        <button class="close-x" data-close="signupModal" aria-label="Close">×</button>
+  <!-- My Bets Modal - Add at the END of body, before closing </body> tag -->
+  <div id="myBetsModal" class="my-bets-modal hidden">
+    <div class="my-bets-overlay"></div>
+
+    <div class="my-bets-container">
+      <!-- Header -->
+      <div class="my-bets-header">
+        <h2>My Bets</h2>
+        <button class="close-my-bets" id="closeMyBets">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-      <form id="signupForm" class="auth-form" novalidate>
-        <div class="row" style="gap:10px;">
-          <label style="flex:1">
-            <span>First name</span>
-            <input type="text" id="suFirst" class="input" autocomplete="given-name" required />
-          </label>
-          <label style="flex:1">
-            <span>Last name</span>
-            <input type="text" id="suLast" class="input" autocomplete="family-name" required />
-          </label>
+
+
+
+      <!-- Tabs -->
+      <div class="my-bets-tabs">
+        <button class="bet-tab" data-tab="cashout">Cash Out</button>
+        <button class="bet-tab" data-tab="live">Live Now</button>
+        <button class="bet-tab active" data-tab="unsettled">Unsettled</button>
+        <button class="bet-tab" data-tab="settled">Settled</button>
+      </div>
+
+      <!-- Content Area -->
+      <div class="my-bets-content">
+        <div class="bet-tab-content" id="cashout-content">
+          <p class="empty-state">No bets available for cash out</p>
         </div>
-      
-        <label>
-          <span>Birth date</span>
-          <input type="date" id="suDob" class="input" required />
-        </label>
-      
-        <label>
-          <span>Email</span>
-          <input type="email" id="suEmail" class="input" autocomplete="email" required />
-        </label>
-      
-        <label>
-          <span>Password</span>
-          <input type="password" id="suPassword" class="input" minlength="8" autocomplete="new-password" required />
-        </label>
-      
-        <label>
-          <span>Repeat password</span>
-          <input type="password" id="suConfirm" class="input" minlength="8" autocomplete="new-password" required />
-        </label>
-      
-        <label class="row" style="gap:8px; align-items:center;">
-          <input type="checkbox" id="suRemember" />
-          <span class="muted">Remember me</span>
-        </label>
-      
-        <label class="row" style="gap:8px; align-items:center;">
-          <input type="checkbox" id="suTerms" required />
-          <span class="muted">I accept the Terms & Conditions</span>
-        </label>
-      
-        <button class="btn btn-join place" type="submit">Create Account</button>
-      </form>
-      
-    </div>
-  </div>
 
-  <!-- Message Modal -->
-  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" aria-hidden="true">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3 id="mTitle">Message</h3>
-        <button class="close-x" id="mClose" aria-label="Close">×</button>
+        <div class="bet-tab-content" id="live-content">
+          <p class="empty-state">No live bets</p>
+        </div>
+
+        <div class="bet-tab-content active" id="unsettled-content">
+          <p class="empty-state">No unsettled bets</p>
+        </div>
+
+        <div class="bet-tab-content" id="settled-content">
+          <p class="empty-state">No settled bets</p>
+        </div>
       </div>
-      <div class="modal-body" id="mBody"></div>
     </div>
   </div>
-  
 
-  <script defer src="./script.js"></script>
+  <!-- Promotions Modal -->
+  <div id="promotionsModal" class="promotions-modal">
+    <div class="promotions-overlay"></div>
+
+    <div class="promotions-container">
+      <!-- Header -->
+      <div class="promotions-header">
+        <h2>
+          <span class="promo-icon">🎁</span>
+          Active Promotions
+        </h2>
+        <button class="close-promotions" id="closePromotions">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Promotions Grid -->
+      <div class="promotions-grid">
+
+        <!-- Promo Card 1 -->
+        <div class="promo-card promo-featured">
+          <span class="promo-badge">Featured</span>
+          <div class="promo-icon-large">🎁</div>
+          <h3 class="promo-title">Welcome Bonus</h3>
+          <div class="promo-amount">100% up to $1,000</div>
+          <p class="promo-description">Get 100% match on your first deposit up to $1,000</p>
+          <button class="promo-claim-btn">Claim Now</button>
+        </div>
+
+        <!-- Promo Card 2 -->
+        <div class="promo-card">
+          <div class="promo-icon-large">⚡</div>
+          <h3 class="promo-title">Daily Free Bet</h3>
+          <div class="promo-amount">$10 Free Bet</div>
+          <p class="promo-description">Bet $50+ daily and receive a $10 free bet</p>
+          <button class="promo-claim-btn">Claim Now</button>
+        </div>
+
+        <!-- Promo Card 3 -->
+        <div class="promo-card">
+          <div class="promo-icon-large">💰</div>
+          <h3 class="promo-title">Cashback Bonus</h3>
+          <div class="promo-amount">25% Cashback</div>
+          <p class="promo-description">Get up to 25% cashback on weekly losses</p>
+          <button class="promo-claim-btn">Claim Now</button>
+        </div>
+
+        <!-- Promo Card 4 -->
+        <div class="promo-card">
+          <div class="promo-icon-large">👑</div>
+          <h3 class="promo-title">VIP Program</h3>
+          <div class="promo-amount">Exclusive Rewards</div>
+          <p class="promo-description">Join our VIP program for exclusive benefits</p>
+          <button class="promo-claim-btn">Learn More</button>
+        </div>
+
+        <!-- Promo Card 5 -->
+        <div class="promo-card">
+          <div class="promo-icon-large">🔥</div>
+          <h3 class="promo-title">Refer a Friend</h3>
+          <div class="promo-amount">$50 Bonus</div>
+          <p class="promo-description">Earn $50 for each friend you refer</p>
+          <button class="promo-claim-btn">Get Link</button>
+        </div>
+
+        <!-- Promo Card 6 -->
+        <div class="promo-card">
+          <div class="promo-icon-large">🎯</div>
+          <h3 class="promo-title">Accumulator Boost</h3>
+          <div class="promo-amount">Up to 50%</div>
+          <p class="promo-description">Boost your accumulator bets by up to 50%</p>
+          <button class="promo-claim-btn">Activate</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- ========================================
+     PROMOTIONAL CAROUSEL SECTION
+     Add this RIGHT ABOVE your highlights section
+     ======================================== -->
+
+  <section id="homeSection" class="page-section active">
+
+    <section class="promo-carousel-section">
+      <div class="promo-carousel-container">
+
+        <!-- Main Carousel -->
+        <div class="promo-carousel" id="promoCarousel">
+
+          <!-- Slide 1: Welcome Bonus -->
+          <div class="promo-slide active" data-slide="0">
+            <div class="slide-bg-pattern"></div>
+            <div class="slide-decoration slide-decoration-1"></div>
+            <div class="slide-decoration slide-decoration-2"></div>
+
+            <div class="slide-content">
+              <div class="slide-badge">
+                <i class="fas fa-gift"></i>
+                <span>NEW CUSTOMER OFFER</span>
+              </div>
+              <h2 class="slide-title">GET 100% BONUS</h2>
+              <div class="slide-subtitle">UP TO $1,000</div>
+              <p class="slide-description">On your first deposit</p>
+              <button class="slide-cta slide-cta-green">
+                JOIN NOW
+                <i class="fas fa-bolt"></i>
+              </button>
+            </div>
+
+            <div class="slide-icon-decoration">
+              <i class="fas fa-gift"></i>
+            </div>
+          </div>
+
+          <!-- Slide 2: Crypto Payments -->
+          <div class="promo-slide" data-slide="2">
+            <div class="slide-bg-pattern"></div>
+            <div class="slide-decoration slide-decoration-1"></div>
+            <div class="slide-decoration slide-decoration-2"></div>
+
+            <div class="slide-content">
+              <div class="slide-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="6" x2="12" y2="10" />
+                  <line x1="12" y1="14" x2="12" y2="18" />
+                  <line x1="9" y1="12" x2="15" y2="12" />
+                </svg>
+                <span>CRYPTO ACCEPTED</span>
+              </div>
+
+              <div class="slide-text-group">
+                <h2 class="slide-title">PAY WITH <br><span class="slide-highlight">CRYPTO</span></h2>
+                <div class="slide-subtitle">Bitcoin, Ethereum, USDT & more</div>
+
+                <ul class="slide-features">
+                  <li>⚡ Instant deposits</li>
+                  <li>🔒 Secure & anonymous</li>
+                  <li>💰 No extra fees</li>
+                </ul>
+              </div>
+
+              <button class="slide-cta slide-cta-green">
+                DEPOSIT NOW
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="slide-icon-decoration">
+              <div class="crypto-coins-stack">
+                <div class="coin-large btc">₿</div>
+                <div class="coin-medium eth">Ξ</div>
+                <div class="coin-small usdt">₮</div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Slide 2: Daily Rewards -->
+          <div class="promo-slide" data-slide="1">
+            <div class="slide-bg-pattern"></div>
+            <div class="slide-decoration slide-decoration-1"></div>
+            <div class="slide-decoration slide-decoration-2"></div>
+
+            <div class="slide-content">
+              <div class="slide-badge">
+                <i class="fas fa-star"></i>
+                <span>DAILY REWARDS</span>
+              </div>
+              <div class="slide-text-group">
+                <h2 class="slide-title">FREE BETS</h2>
+                <div class="slide-subtitle">EVERY DAY</div>
+                <p class="slide-description">Bet $50+ daily, get $10 free bet</p>
+              </div>
+
+              <button class="slide-cta slide-cta-orange">
+                CLAIM NOW
+                <i class="fas fa-bolt"></i>
+              </button>
+            </div>
+
+            <div class="slide-icon-decoration">
+              <i class="fas fa-star"></i>
+            </div>
+          </div>
+
+          <!-- Slide 3: Cashback -->
+          <div class="promo-slide" data-slide="2">
+            <div class="slide-bg-pattern"></div>
+            <div class="slide-decoration slide-decoration-1"></div>
+            <div class="slide-decoration slide-decoration-2"></div>
+
+            <div class="slide-content">
+              <div class="slide-badge">
+                <i class="fas fa-chart-line"></i>
+                <span>EXCLUSIVE OFFER</span>
+              </div>
+              <h2 class="slide-title">CASHBACK</h2>
+              <div class="slide-subtitle">UP TO 25%</div>
+              <p class="slide-description">Weekly cashback on all losses</p>
+              <button class="slide-cta slide-cta-purple">
+                LEARN MORE
+                <i class="fas fa-bolt"></i>
+              </button>
+            </div>
+
+            <div class="slide-icon-decoration">
+              <i class="fas fa-chart-line"></i>
+            </div>
+          </div>
+
+          <!-- Slide 4: VIP Program -->
+          <div class="promo-slide" data-slide="3">
+            <div class="slide-bg-pattern"></div>
+            <div class="slide-decoration slide-decoration-1"></div>
+            <div class="slide-decoration slide-decoration-2"></div>
+
+            <div class="slide-content">
+              <div class="slide-badge">
+                <i class="fas fa-award"></i>
+                <span>VIP PROGRAM</span>
+              </div>
+              <h2 class="slide-title">LOYALTY REWARDS</h2>
+              <div class="slide-subtitle">UNLIMITED</div>
+              <p class="slide-description">Exclusive perks for VIP members</p>
+              <button class="slide-cta slide-cta-gold">
+                JOIN VIP
+                <i class="fas fa-bolt"></i>
+              </button>
+            </div>
+
+            <div class="slide-icon-decoration">
+              <i class="fas fa-award"></i>
+            </div>
+          </div>
+
+          <!-- Slide 5: Instant Payouts -->
+          <div class="promo-slide" data-slide="4">
+            <div class="slide-bg-pattern"></div>
+            <div class="slide-decoration slide-decoration-1"></div>
+            <div class="slide-decoration slide-decoration-2"></div>
+
+            <div class="slide-content">
+              <div class="slide-badge">
+                <i class="fas fa-shield-alt"></i>
+                <span>TRUSTED PLATFORM</span>
+              </div>
+              <h2 class="slide-title">INSTANT PAYOUTS</h2>
+              <div class="slide-subtitle">24/7 SUPPORT</div>
+              <p class="slide-description">Fast withdrawals, reliable service</p>
+              <button class="slide-cta slide-cta-blue">
+                GET STARTED
+                <i class="fas fa-bolt"></i>
+              </button>
+            </div>
+
+            <div class="slide-icon-decoration">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+          </div>
+
+
+
+          <!-- Navigation Arrows -->
+          <button class="carousel-nav carousel-nav-prev" id="carouselPrev">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="carousel-nav carousel-nav-next" id="carouselNext">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+
+          <!-- Dots Navigation -->
+          <div class="carousel-dots" id="carouselDots">
+            <button class="carousel-dot active" data-slide="0"></button>
+            <button class="carousel-dot" data-slide="1"></button>
+            <button class="carousel-dot" data-slide="2"></button>
+            <button class="carousel-dot" data-slide="3"></button>
+            <button class="carousel-dot" data-slide="4"></button>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="carousel-progress-bg">
+            <div class="carousel-progress" id="carouselProgress"></div>
+          </div>
+        </div>
+
+        <!-- Feature Cards -->
+        <div class="promo-features">
+          <div class="feature-card feature-card-green">
+            <div class="feature-icon">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+            <h3 class="feature-title">Secure & Licensed</h3>
+            <p class="feature-description">100% safe and secure betting platform</p>
+          </div>
+
+          <div class="feature-card feature-card-orange">
+            <div class="feature-icon">
+              <i class="fas fa-bolt"></i>
+            </div>
+            <h3 class="feature-title">Instant Deposits</h3>
+            <p class="feature-description">Lightning-fast deposits and withdrawals</p>
+          </div>
+
+          <div class="feature-card feature-card-purple">
+            <div class="feature-icon">
+              <i class="fas fa-award"></i>
+            </div>
+            <h3 class="feature-title">Best Odds</h3>
+            <p class="feature-description">Competitive odds across all sports</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Winners (Left) - Separate -->
+    <div class="recent-winners-section">
+      <h2 class="winners-title">💰 Recent Big Wins</h2>
+      <div class="winners-feed" id="winnersFeed"></div>
+      <button class="view-all-winners-btn">View All Winners →</button>
+    </div>
+
+    <!-- Winning Streak (Right) - Separate with MORE content -->
+    <div class="bet-streak-widget">
+      <div class="streak-header">
+        <h3>🔥 Your Winning Streak</h3>
+        <span class="streak-count">0/10</span>
+      </div>
+
+      <div class="streak-progress">
+        <div class="streak-bar" style="width: 0%"></div>
+      </div>
+
+      <div class="streak-info">
+        <span>Keep going to unlock <strong>GOLD STATUS</strong>!</span>
+      </div>
+
+      <div class="streak-rewards">
+        <div class="reward-item">
+          <span class="reward-icon">🎁</span>
+          <span class="reward-text">Next: €25 Free Bet</span>
+        </div>
+      </div>
+
+      <!-- ✅ ADD THESE NEW SECTIONS -->
+
+      <!-- Your Streak Stats -->
+      <div class="streak-stats">
+        <h4 class="stats-subtitle">📊 Your Statistics</h4>
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-number">0</span>
+            <span class="stat-label">Total Wins</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">0%</span>
+            <span class="stat-label">Win Rate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ ADD THE id ATTRIBUTES -->
+      <div class="milestone-section">
+        <h4 class="milestone-title">🏆 Milestones</h4>
+        <div class="milestone-list">
+
+          <!-- ✅ ADD id="bronzeMilestone" -->
+          <div class="milestone-item locked" id="bronzeMilestone">
+            <span class="milestone-icon">🥉</span>
+            <div class="milestone-info">
+              <span class="milestone-name">Bronze Bettor</span>
+              <span class="milestone-req">Win 5 bets</span>
+            </div>
+            <span class="milestone-badge">🔒</span>
+          </div>
+
+          <!-- ✅ ADD id="silverMilestone" -->
+          <div class="milestone-item locked" id="silverMilestone">
+            <span class="milestone-icon">🥈</span>
+            <div class="milestone-info">
+              <span class="milestone-name">Silver Bettor</span>
+              <span class="milestone-req">Win 10 bets</span>
+            </div>
+            <span class="milestone-badge">🔒</span>
+          </div>
+
+          <!-- ✅ ADD id="goldMilestone" -->
+          <div class="milestone-item locked" id="goldMilestone">
+            <span class="milestone-icon">🥇</span>
+            <div class="milestone-info">
+              <span class="milestone-name">Gold Status</span>
+              <span class="milestone-req">Win 20 bets</span>
+            </div>
+            <span class="milestone-badge">🔒</span>
+          </div>
+
+        </div>
+      </div> <!-- Highlights Section Header -->
+      <div class="highlights-header">
+        <div class="wrap">
+          <div class="section-hero">
+            <span class="fire-icon">🔥</span>
+            <div class="hero-text">
+              <h2 class="hero-title">Today's Highlights</h2>
+              <p class="hero-subtitle">Best betting opportunities of the day</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-carousel" id="featuredMatches" aria-label="Featured Matches">
+        <button class="carousel-btn left" aria-label="Scroll left">◀</button>
+
+        <div class="carousel-track" id="carouselTrack">
+          <!-- JS injects .event-card elements here -->
+        </div>
+
+        <button class="carousel-btn right" aria-label="Scroll right">▶</button>
+      </div>
+
+
+      <!-- Sports Navigation Bar -->
+      <!-- Place this AFTER "Today's Highlights" carousel and BEFORE "Live Matches" section -->
+
+      <section class="sports-navigation-section">
+        <div class="wrap">
+          <div class="sports-nav-header">
+            <h3 class="sports-nav-title">Browse Sports</h3>
+            <button class="show-all-sports-btn" id="showAllSportsBtn">
+              Show All
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="sports-nav-scroll">
+            <!-- American Football -->
+            <button class="sport-nav-item" data-sport="american-football">
+              <span class="sport-icon">🏈</span>
+              <span class="sport-name">American Football</span>
+            </button>
+
+            <!-- Australian Rules -->
+            <button class="sport-nav-item" data-sport="australian-rules">
+              <span class="sport-icon">🏉</span>
+              <span class="sport-name">Australian Rules</span>
+            </button>
+
+            <!-- Baseball -->
+            <button class="sport-nav-item" data-sport="baseball">
+              <span class="sport-icon">⚾</span>
+              <span class="sport-name">Baseball</span>
+            </button>
+
+            <!-- Basketball -->
+            <button class="sport-nav-item" data-sport="basketball">
+              <span class="sport-icon">🏀</span>
+              <span class="sport-name">Basketball</span>
+            </button>
+
+            <!-- Boxing -->
+            <button class="sport-nav-item" data-sport="boxing">
+              <span class="sport-icon">🥊</span>
+              <span class="sport-name">Boxing</span>
+            </button>
+
+            <!-- Cricket -->
+            <button class="sport-nav-item" data-sport="cricket">
+              <span class="sport-icon">🏏</span>
+              <span class="sport-name">Cricket</span>
+            </button>
+
+            <!-- Cycling -->
+            <button class="sport-nav-item" data-sport="cycling">
+              <span class="sport-icon">🚴</span>
+              <span class="sport-name">Cycling</span>
+            </button>
+
+            <!-- Darts -->
+            <button class="sport-nav-item" data-sport="darts">
+              <span class="sport-icon">🎯</span>
+              <span class="sport-name">Darts</span>
+            </button>
+
+            <!-- Esports -->
+            <button class="sport-nav-item" data-sport="esports">
+              <span class="sport-icon">🎮</span>
+              <span class="sport-name">Esports</span>
+            </button>
+
+            <!-- Floorball -->
+            <button class="sport-nav-item" data-sport="floorball">
+              <span class="sport-icon">🥍</span>
+              <span class="sport-name">Floorball</span>
+            </button>
+
+            <!-- Formula 1 -->
+            <button class="sport-nav-item" data-sport="formula1">
+              <span class="sport-icon">🏎️</span>
+              <span class="sport-name">Formula 1</span>
+            </button>
+
+            <!-- Futsal -->
+            <button class="sport-nav-item" data-sport="futsal">
+              <span class="sport-icon">⚽</span>
+              <span class="sport-name">Futsal</span>
+            </button>
+
+            <!-- Gaelic Sports -->
+            <button class="sport-nav-item" data-sport="gaelic">
+              <span class="sport-icon">🍀</span>
+              <span class="sport-name">Gaelic Sports</span>
+            </button>
+
+            <!-- Golf -->
+            <button class="sport-nav-item" data-sport="golf">
+              <span class="sport-icon">⛳</span>
+              <span class="sport-name">Golf</span>
+            </button>
+
+            <!-- Greyhounds -->
+            <button class="sport-nav-item" data-sport="greyhounds">
+              <span class="sport-icon">🐕</span>
+              <span class="sport-name">Greyhounds</span>
+            </button>
+
+            <!-- Handball -->
+            <button class="sport-nav-item" data-sport="handball">
+              <span class="sport-icon">🤾</span>
+              <span class="sport-name">Handball</span>
+            </button>
+
+            <!-- Hockey -->
+            <button class="sport-nav-item" data-sport="hockey">
+              <span class="sport-icon">🏒</span>
+              <span class="sport-name">Hockey</span>
+            </button>
+
+            <!-- Horse Racing -->
+            <button class="sport-nav-item" data-sport="horse-racing">
+              <span class="sport-icon">🏇</span>
+              <span class="sport-name">Horse Racing</span>
+            </button>
+
+            <!-- Ice Hockey -->
+            <button class="sport-nav-item" data-sport="ice-hockey">
+              <span class="sport-icon">🏒</span>
+              <span class="sport-name">Ice Hockey</span>
+            </button>
+
+            <!-- Lacrosse -->
+            <button class="sport-nav-item" data-sport="lacrosse">
+              <span class="sport-icon">🥍</span>
+              <span class="sport-name">Lacrosse</span>
+            </button>
+
+            <!-- MMA -->
+            <button class="sport-nav-item" data-sport="mma">
+              <span class="sport-icon">🥋</span>
+              <span class="sport-name">MMA</span>
+            </button>
+
+            <!-- Motor Sports -->
+            <button class="sport-nav-item" data-sport="motor-sports">
+              <span class="sport-icon">🏁</span>
+              <span class="sport-name">Motor Sports</span>
+            </button>
+
+            <!-- Pelota -->
+            <button class="sport-nav-item" data-sport="pelota">
+              <span class="sport-icon">🎾</span>
+              <span class="sport-name">Pelota</span>
+            </button>
+
+            <!-- Politics -->
+            <button class="sport-nav-item" data-sport="politics">
+              <span class="sport-icon">🏛️</span>
+              <span class="sport-name">Politics</span>
+            </button>
+
+            <!-- Rugby League -->
+            <button class="sport-nav-item" data-sport="rugby-league">
+              <span class="sport-icon">🏉</span>
+              <span class="sport-name">Rugby League</span>
+            </button>
+
+            <!-- Rugby Union -->
+            <button class="sport-nav-item" data-sport="rugby-union">
+              <span class="sport-icon">🏉</span>
+              <span class="sport-name">Rugby Union</span>
+            </button>
+
+            <!-- Snooker -->
+            <button class="sport-nav-item" data-sport="snooker">
+              <span class="sport-icon">🎱</span>
+              <span class="sport-name">Snooker</span>
+            </button>
+
+            <!-- Soccer (Featured) -->
+            <button class="sport-nav-item active" data-sport="soccer">
+              <span class="sport-icon">⚽</span>
+              <span class="sport-name">Soccer</span>
+            </button>
+
+            <!-- Table Tennis -->
+            <button class="sport-nav-item" data-sport="table-tennis">
+              <span class="sport-icon">🏓</span>
+              <span class="sport-name">Table Tennis</span>
+            </button>
+
+            <!-- Tennis -->
+            <button class="sport-nav-item" data-sport="tennis">
+              <span class="sport-icon">🎾</span>
+              <span class="sport-name">Tennis</span>
+            </button>
+
+            <!-- Volleyball -->
+            <button class="sport-nav-item" data-sport="volleyball">
+              <span class="sport-icon">🏐</span>
+              <span class="sport-name">Volleyball</span>
+            </button>
+
+            <!-- Water Polo -->
+            <button class="sport-nav-item" data-sport="water-polo">
+              <span class="sport-icon">🤽</span>
+              <span class="sport-name">Water Polo</span>
+            </button>
+
+            <!-- Winter Sports -->
+            <button class="sport-nav-item" data-sport="winter-sports">
+              <span class="sport-icon">⛷️</span>
+              <span class="sport-name">Winter Sports</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live Events Section -->
+      <section class="live-events-section">
+        <div class="section-header">
+          <div class="section-title">
+            <span class="live-indicator">●</span>
+            <h2>Live Matches</h2>
+            <span class="live-count">230 Live Matches</span>
+          </div>
+          <button class="view-all-btn">
+            <span>View All</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+
+
+        <!-- Live Matches Container -->
+        <div class="live-matches-container">
+          <!-- Soccer Matches -->
+          <div class="league-section">
+            <div class="league-header">
+              <span class="league-icon">🇪🇸</span>
+              <span class="league-name">Spain - LaLiga</span>
+              <button class="favorite-btn">⭐</button>
+            </div>
+
+            <!-- Single Live Match Card -->
+            <div class="live-match-card">
+              <!-- Match Info Section -->
+              <div class="match-info-section">
+                <div class="match-time-display">
+                  <div class="live-time">69:36</div>
+                  <div class="live-indicator">●</div>
+                </div>
+
+                <div class="teams-display">
+                  <div class="team-row">
+                    <span class="team-name">Valencia CF</span>
+                    <span class="team-score">1</span>
+                  </div>
+                  <div class="team-row">
+                    <span class="team-name">Real Oviedo</span>
+                    <span class="team-score">0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Market Selector & Odds Section -->
+              <div class="betting-section">
+                <!-- Market Tabs -->
+                <div class="market-selector-tabs">
+                  <button class="market-tab active" data-market="fulltime">
+                    <span>Fulltime Result</span>
+                  </button>
+                  <button class="market-tab" data-market="next-goal">
+                    <span>Next Goal</span>
+                  </button>
+                  <button class="market-tab" data-market="goals">
+                    <span>Match Goals</span>
+                  </button>
+                  <button class="market-tab" data-market="asian">
+                    <span>Asian Lines</span>
+                  </button>
+                </div>
+
+                <!-- Odds Display -->
+                <div class="odds-container">
+                  <!-- Fulltime Result -->
+                  <div class="odds-set active" data-odds="fulltime">
+                    <div class="odds-labels">
+                      <span>1</span>
+                      <span>X</span>
+                      <span>2</span>
+                    </div>
+                    <div class="odds-buttons">
+                      <button class="odds-btn" data-outcome="1" data-odd="1.19">1.19</button>
+                      <button class="odds-btn" data-outcome="X" data-odd="5.40">5.40</button>
+                      <button class="odds-btn" data-outcome="2" data-odd="29.00">29.00</button>
+                    </div>
+                  </div>
+
+                  <!-- Next Goal -->
+                  <div class="odds-set" data-odds="next-goal">
+                    <div class="odds-labels">
+                      <span>Valencia</span>
+                      <span>No Goal</span>
+                      <span>Oviedo</span>
+                    </div>
+                    <div class="odds-buttons">
+                      <button class="odds-btn" data-outcome="home-next" data-odd="1.65">1.65</button>
+                      <button class="odds-btn" data-outcome="no-goal" data-odd="3.20">3.20</button>
+                      <button class="odds-btn" data-outcome="away-next" data-odd="2.80">2.80</button>
+                    </div>
+                  </div>
+
+                  <!-- Match Goals -->
+                  <div class="odds-set" data-odds="goals">
+                    <div class="odds-labels">
+                      <span>Over 2.5</span>
+                      <span>Under 2.5</span>
+                      <span>BTTS</span>
+                    </div>
+                    <div class="odds-buttons">
+                      <button class="odds-btn" data-outcome="over" data-odd="1.75">1.75</button>
+                      <button class="odds-btn" data-outcome="under" data-odd="2.05">2.05</button>
+                      <button class="odds-btn" data-outcome="btts" data-odd="1.90">1.90</button>
+                    </div>
+                  </div>
+
+                  <!-- Asian Lines -->
+                  <div class="odds-set" data-odds="asian">
+                    <div class="odds-labels">
+                      <span>Valencia -0.5</span>
+                      <span>Draw</span>
+                      <span>Oviedo +0.5</span>
+                    </div>
+                    <div class="odds-buttons">
+                      <button class="odds-btn" data-outcome="valencia-handicap" data-odd="1.95">1.95</button>
+                      <button class="odds-btn" data-outcome="draw-handicap" data-odd="3.40">3.40</button>
+                      <button class="odds-btn" data-outcome="oviedo-handicap" data-odd="1.85">1.85</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="match-actions">
+                <button class="action-btn stats-btn" title="Statistics">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor" />
+                  </svg>
+                </button>
+
+                <button class="action-btn tv-btn" title="Watch Live">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2"
+                      fill="none" />
+                    <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" />
+                    <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                </button>
+
+                <button class="action-btn more-btn" title="More Options">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="1" stroke="currentColor" stroke-width="2" fill="currentColor" />
+                    <circle cx="12" cy="5" r="1" stroke="currentColor" stroke-width="2" fill="currentColor" />
+                    <circle cx="12" cy="19" r="1" stroke="currentColor" stroke-width="2" fill="currentColor" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live Stats Dashboard -->
+      <div class="live-stats-dashboard">
+        <h2 class="stats-title">📊 Live Platform Stats</h2>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value" id="onlineUsers">12,847</div>
+            <div class="stat-label">Users Online</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-value" id="todayWinnings">€456,239</div>
+            <div class="stat-label">Winnings Today</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">🔥</div>
+            <div class="stat-value" id="activeBets">8,592</div>
+            <div class="stat-label">Active Bets</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modern Floating Bet Slip -->
+      <div id="floatingBetSlip" class="floating-bet-slip">
+        <!-- Collapsed State (Trigger) -->
+        <div class="bet-slip-collapsed" id="betSlipCollapsed">
+          <div class="slip-header">
+            <div class="slip-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2" />
+                <path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </div>
+            <span class="slip-count">0</span>
+            <span class="slip-label">Betslip</span>
+          </div>
+          <div class="slip-odds">0.00</div>
+        </div>
+
+        <!-- Expanded State -->
+        <div class="bet-slip-expanded hidden" id="betSlipExpanded">
+          <!-- Header -->
+          <div class="expanded-header">
+            <div class="header-left">
+              <button class="close-expanded" id="closeExpanded">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" />
+                </svg>
+              </button>
+              <span class="header-title">Betslip</span>
+
+            </div>
+            <div class="header-actions">
+              <button class="header-btn" title="Share">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" stroke="currentColor"
+                    stroke-width="2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="bet-tabs">
+            <button class="bet-tab active" data-tab="single">Single</button>
+            <button class="bet-tab" data-tab="multiple">Multiple</button>
+            <button class="bet-tab" data-tab="system">System</button>
+          </div>
+
+          <!-- Bet Items Container -->
+          <div class="bet-items-container" id="betItemsContainer">
+            <!-- Bet items will be added here dynamically -->
+          </div>
+
+          <!-- Stake Input Section -->
+          <div class="stake-section">
+            <div class="stake-input-row">
+              <input type="number" class="stake-input" id="stake" value="0.00" step="0.01" min="0.5" max="99999">
+            </div>
+
+            <!-- Potential Winnings -->
+            <div class="potential-winnings">
+              <span>Potential winnings</span>
+              <strong id="potentialWin">0.00 лв.</strong>
+            </div>
+
+            <!-- Place Bet Button -->
+            <button class="place-bet-btn" id="place">
+              BET NOW
+            </button>
+          </div>
+        </div>
+
+        <!-- Match Preview Modal -->
+        <div id="matchPreviewModal" class="modal" role="dialog" aria-hidden="true">
+          <div class="modal-card">
+            <div class="modal-head">
+              <h3 id="matchPreviewTitle">Match Preview</h3>
+              <button class="close-x" onclick="closeMatchModal()" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" id="matchPreviewBody">
+              <!-- Content injected by JS -->
+            </div>
+          </div>
+        </div>
+
+
+
+
+        <!-- Message Modal -->
+        <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" aria-hidden="true">
+          <div class="modal-card">
+            <div class="modal-head">
+              <h3 id="mTitle">Message</h3>
+              <button class="close-x" id="mClose" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" id="mBody"></div>
+          </div>
+        </div>
+
+        <!-- Auth Feedback Message -->
+        <div id="authMessage" class="auth-message hidden"></div>
+  </section> <!-- Close homeSection -->
+
+  <!-- ==================== ALL SPORTS PAGE ==================== -->
+  <section id="allSportsPage" class="page-section">
+    <div class="wrap">
+      <!-- Page Header -->
+      <div class="all-sports-page-header">
+        <h1 class="page-title">
+          <span class="page-icon">🏆</span>
+          All Sports
+        </h1>
+        <p class="page-subtitle">Browse all sports and place your bets • 32 different sports available</p>
+      </div>
+
+      <!-- Date Filter Menu -->
+      <div class="date-filter-section">
+        <div class="date-filter-menu">
+          <button class="date-filter-btn active" data-date="today">
+            <span class="date-label">Today</span>
+            <span class="date-value" id="todayDate">Oct 21</span>
+          </button>
+          <button class="date-filter-btn" data-date="tomorrow">
+            <span class="date-label">Tomorrow</span>
+            <span class="date-value" id="tomorrowDate">Oct 22</span>
+          </button>
+          <button class="date-filter-btn" data-date="day3">
+            <span class="date-label" id="day3Label">Wednesday</span>
+            <span class="date-value" id="day3Date">Oct 23</span>
+          </button>
+          <button class="date-filter-btn" data-date="day4">
+            <span class="date-label" id="day4Label">Thursday</span>
+            <span class="date-value" id="day4Date">Oct 24</span>
+          </button>
+          <button class="date-filter-btn" data-date="day5">
+            <span class="date-label" id="day5Label">Friday</span>
+            <span class="date-value" id="day5Date">Oct 25</span>
+          </button>
+          <button class="date-filter-btn" data-date="day6">
+            <span class="date-label" id="day6Label">Saturday</span>
+            <span class="date-value" id="day6Date">Oct 26</span>
+          </button>
+          <button class="date-filter-btn" data-date="day7">
+            <span class="date-label" id="day7Label">Sunday</span>
+            <span class="date-value" id="day7Date">Oct 27</span>
+          </button>
+          <button class="date-filter-btn" data-date="day8">
+            <span class="date-label" id="day8Label">Monday</span>
+            <span class="date-value" id="day8Date">Oct 28</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Session Filter Menu -->
+      <div class="session-filter-section">
+        <div class="session-filter-menu">
+          <button class="session-filter-btn active" data-session="all">
+            <span class="session-icon">🕐</span>
+            <span class="session-label">All Day</span>
+            <span class="session-time">24 Hours</span>
+          </button>
+
+          <button class="session-filter-btn" data-session="day">
+            <span class="session-icon">☀️</span>
+            <span class="session-label">Day Session</span>
+            <span class="session-time">7 AM - 7 PM</span>
+          </button>
+
+          <button class="session-filter-btn" data-session="night">
+            <span class="session-icon">🌙</span>
+            <span class="session-label">Night Session</span>
+            <span class="session-time">7 PM - 7 AM</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sports Grid -->
+      <div class="all-sports-grid" id="allSportsGrid">
+        <!-- Soccer (Featured) -->
+        <div class="all-sport-card featured" data-sport="soccer">
+          <span class="featured-badge">Popular</span>
+          <span class="all-sport-icon">⚽</span>
+          <span class="all-sport-name">Soccer</span>
+          <span class="sport-count">127 matches</span>
+        </div>
+
+        <!-- Basketball -->
+        <div class="all-sport-card" data-sport="basketball">
+          <span class="all-sport-icon">🏀</span>
+          <span class="all-sport-name">Basketball</span>
+          <span class="sport-count">42 matches</span>
+        </div>
+
+        <!-- Tennis -->
+        <div class="all-sport-card" data-sport="tennis">
+          <span class="all-sport-icon">🎾</span>
+          <span class="all-sport-name">Tennis</span>
+          <span class="sport-count">38 matches</span>
+        </div>
+
+        <!-- Horse Racing -->
+        <div class="all-sport-card" data-sport="horse-racing">
+          <span class="all-sport-icon">🏇</span>
+          <span class="all-sport-name">Horse Racing</span>
+          <span class="sport-count">45 matches</span>
+        </div>
+
+        <!-- Esports -->
+        <div class="all-sport-card" data-sport="esports">
+          <span class="all-sport-icon">🎮</span>
+          <span class="all-sport-name">Esports</span>
+          <span class="sport-count">35 matches</span>
+        </div>
+
+        <!-- Ice Hockey -->
+        <div class="all-sport-card" data-sport="ice-hockey">
+          <span class="all-sport-icon">🏒</span>
+          <span class="all-sport-name">Ice Hockey</span>
+          <span class="sport-count">30 matches</span>
+        </div>
+
+        <!-- Table Tennis -->
+        <div class="all-sport-card" data-sport="table-tennis">
+          <span class="all-sport-icon">🏓</span>
+          <span class="all-sport-name">Table Tennis</span>
+          <span class="sport-count">28 matches</span>
+        </div>
+
+        <!-- Baseball -->
+        <div class="all-sport-card" data-sport="baseball">
+          <span class="all-sport-icon">⚾</span>
+          <span class="all-sport-name">Baseball</span>
+          <span class="sport-count">25 matches</span>
+        </div>
+
+        <!-- Hockey -->
+        <div class="all-sport-card" data-sport="hockey">
+          <span class="all-sport-icon">🏒</span>
+          <span class="all-sport-name">Hockey</span>
+          <span class="sport-count">22 matches</span>
+        </div>
+
+        <!-- Greyhounds -->
+        <div class="all-sport-card" data-sport="greyhounds">
+          <span class="all-sport-icon">🐕</span>
+          <span class="all-sport-name">Greyhounds</span>
+          <span class="sport-count">20 matches</span>
+        </div>
+
+        <!-- Volleyball -->
+        <div class="all-sport-card" data-sport="volleyball">
+          <span class="all-sport-icon">🏐</span>
+          <span class="all-sport-name">Volleyball</span>
+          <span class="sport-count">19 matches</span>
+        </div>
+
+        <!-- Cricket -->
+        <div class="all-sport-card" data-sport="cricket">
+          <span class="all-sport-icon">🏏</span>
+          <span class="all-sport-name">Cricket</span>
+          <span class="sport-count">18 matches</span>
+        </div>
+
+        <!-- Rugby Union -->
+        <div class="all-sport-card" data-sport="rugby-union">
+          <span class="all-sport-icon">🏉</span>
+          <span class="all-sport-name">Rugby Union</span>
+          <span class="sport-count">16 matches</span>
+        </div>
+
+        <!-- American Football -->
+        <div class="all-sport-card" data-sport="american-football">
+          <span class="all-sport-icon">🏈</span>
+          <span class="all-sport-name">American Football</span>
+          <span class="sport-count">15 matches</span>
+        </div>
+
+        <!-- Handball -->
+        <div class="all-sport-card" data-sport="handball">
+          <span class="all-sport-icon">🤾</span>
+          <span class="all-sport-name">Handball</span>
+          <span class="sport-count">14 matches</span>
+        </div>
+
+        <!-- Darts -->
+        <div class="all-sport-card" data-sport="darts">
+          <span class="all-sport-icon">🎯</span>
+          <span class="all-sport-name">Darts</span>
+          <span class="sport-count">12 matches</span>
+        </div>
+
+        <!-- Futsal -->
+        <div class="all-sport-card" data-sport="futsal">
+          <span class="all-sport-icon">⚽</span>
+          <span class="all-sport-name">Futsal</span>
+          <span class="sport-count">11 matches</span>
+        </div>
+
+        <!-- Rugby League -->
+        <div class="all-sport-card" data-sport="rugby-league">
+          <span class="all-sport-icon">🏉</span>
+          <span class="all-sport-name">Rugby League</span>
+          <span class="sport-count">10 matches</span>
+        </div>
+
+        <!-- Snooker -->
+        <div class="all-sport-card" data-sport="snooker">
+          <span class="all-sport-icon">🎱</span>
+          <span class="all-sport-name">Snooker</span>
+          <span class="sport-count">9 matches</span>
+        </div>
+
+        <!-- Australian Rules -->
+        <div class="all-sport-card" data-sport="australian-rules">
+          <span class="all-sport-icon">🏉</span>
+          <span class="all-sport-name">Australian Rules</span>
+          <span class="sport-count">8 matches</span>
+        </div>
+
+        <!-- MMA -->
+        <div class="all-sport-card" data-sport="mma">
+          <span class="all-sport-icon">🥋</span>
+          <span class="all-sport-name">MMA</span>
+          <span class="sport-count">8 matches</span>
+        </div>
+
+        <!-- Motor Sports -->
+        <div class="all-sport-card" data-sport="motor-sports">
+          <span class="all-sport-icon">🏁</span>
+          <span class="all-sport-name">Motor Sports</span>
+          <span class="sport-count">7 matches</span>
+        </div>
+
+        <!-- Water Polo -->
+        <div class="all-sport-card" data-sport="water-polo">
+          <span class="all-sport-icon">🤽</span>
+          <span class="all-sport-name">Water Polo</span>
+          <span class="sport-count">7 matches</span>
+        </div>
+
+        <!-- Gaelic Sports -->
+        <div class="all-sport-card" data-sport="gaelic">
+          <span class="all-sport-icon">🍀</span>
+          <span class="all-sport-name">Gaelic Sports</span>
+          <span class="sport-count">6 matches</span>
+        </div>
+
+        <!-- Boxing -->
+        <div class="all-sport-card" data-sport="boxing">
+          <span class="all-sport-icon">🥊</span>
+          <span class="all-sport-name">Boxing</span>
+          <span class="sport-count">5 matches</span>
+        </div>
+
+        <!-- Lacrosse -->
+        <div class="all-sport-card" data-sport="lacrosse">
+          <span class="all-sport-icon">🥍</span>
+          <span class="all-sport-name">Lacrosse</span>
+          <span class="sport-count">5 matches</span>
+        </div>
+
+        <!-- Winter Sports -->
+        <div class="all-sport-card" data-sport="winter-sports">
+          <span class="all-sport-icon">⛷️</span>
+          <span class="all-sport-name">Winter Sports</span>
+          <span class="sport-count">5 matches</span>
+        </div>
+
+        <!-- Floorball -->
+        <div class="all-sport-card" data-sport="floorball">
+          <span class="all-sport-icon">🥍</span>
+          <span class="all-sport-name">Floorball</span>
+          <span class="sport-count">4 matches</span>
+        </div>
+
+        <!-- Golf -->
+        <div class="all-sport-card" data-sport="golf">
+          <span class="all-sport-icon">⛳</span>
+          <span class="all-sport-name">Golf</span>
+          <span class="sport-count">4 matches</span>
+        </div>
+
+        <!-- Cycling -->
+        <div class="all-sport-card" data-sport="cycling">
+          <span class="all-sport-icon">🚴</span>
+          <span class="all-sport-name">Cycling</span>
+          <span class="sport-count">3 matches</span>
+        </div>
+
+        <!-- Pelota -->
+        <div class="all-sport-card" data-sport="pelota">
+          <span class="all-sport-icon">🎾</span>
+          <span class="all-sport-name">Pelota</span>
+          <span class="sport-count">3 matches</span>
+        </div>
+
+        <!-- Formula 1 -->
+        <div class="all-sport-card" data-sport="formula1">
+          <span class="all-sport-icon">🏎️</span>
+          <span class="all-sport-name">Formula 1</span>
+          <span class="sport-count">2 matches</span>
+        </div>
+
+        <!-- Politics -->
+        <div class="all-sport-card" data-sport="politics">
+          <span class="all-sport-icon">🏛️</span>
+          <span class="all-sport-name">Politics</span>
+          <span class="sport-count">2 matches</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="inplaySection" class="page-section">
+    <div class="wrap">
+      <div class="wrap">
+        <div class="section-header" style="text-align: center; padding: 40px 0 20px;">
+          <h1
+            style="font-size: 32px; font-weight: 900; color: white; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 12px;">
+            <span style="color: #10b981; font-size: 24px;">●</span>
+            Live In-Play Matches
+          </h1>
+          <p style="color: rgba(255, 255, 255, 0.6); margin: 0; font-size: 16px;">
+            Bet live on ongoing matches • Real-time odds • Live updates
+          </p>
+        </div>
+
+        <!-- Live Events Section -->
+        <section class="live-events-section">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="live-indicator">●</span>
+              <h2>Live Matches</h2>
+              <span class="live-count">230 Live Matches</span>
+            </div>
+            <button class="view-all-btn">
+              <span>View All</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Live Matches Container -->
+          <div class="live-matches-container">
+            <!-- Soccer Matches -->
+            <div class="league-section">
+              <div class="league-header">
+                <span class="league-icon">🇪🇸</span>
+                <span class="league-name">Spain - LaLiga</span>
+                <button class="favorite-btn">⭐</button>
+              </div>
+
+              <!-- Single Live Match Card -->
+              <div class="live-match-card">
+                <!-- Match Info Section -->
+                <div class="match-info-section">
+                  <div class="match-time-display">
+                    <div class="live-time">69:36</div>
+                    <div class="live-indicator">●</div>
+                  </div>
+
+                  <div class="teams-display">
+                    <div class="team-row">
+                      <span class="team-name">Valencia CF</span>
+                      <span class="team-score">1</span>
+                    </div>
+                    <div class="team-row">
+                      <span class="team-name">Real Oviedo</span>
+                      <span class="team-score">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Market Selector & Odds Section -->
+                <div class="betting-section">
+                  <!-- Market Tabs -->
+                  <div class="market-selector-tabs">
+                    <button class="market-tab active" data-market="fulltime">
+                      <span>Fulltime Result</span>
+                    </button>
+                    <button class="market-tab" data-market="next-goal">
+                      <span>Next Goal</span>
+                    </button>
+                    <button class="market-tab" data-market="goals">
+                      <span>Match Goals</span>
+                    </button>
+                  </div>
+
+                  <!-- Odds Display -->
+                  <div class="odds-container">
+                    <!-- Fulltime Result -->
+                    <div class="odds-set active" data-odds="fulltime">
+                      <div class="odds-labels">
+                        <span>1</span>
+                        <span>X</span>
+                        <span>2</span>
+                      </div>
+                      <div class="odds-buttons">
+                        <button class="odds-btn" data-outcome="1" data-odd="1.19">1.19</button>
+                        <button class="odds-btn" data-outcome="X" data-odd="5.40">5.40</button>
+                        <button class="odds-btn" data-outcome="2" data-odd="29.00">29.00</button>
+                      </div>
+                    </div>
+
+                    <!-- Next Goal -->
+                    <div class="odds-set" data-odds="next-goal">
+                      <div class="odds-labels">
+                        <span>Valencia</span>
+                        <span>No Goal</span>
+                        <span>Oviedo</span>
+                      </div>
+                      <div class="odds-buttons">
+                        <button class="odds-btn" data-outcome="home-next" data-odd="1.65">1.65</button>
+                        <button class="odds-btn" data-outcome="no-goal" data-odd="3.20">3.20</button>
+                        <button class="odds-btn" data-outcome="away-next" data-odd="2.80">2.80</button>
+                      </div>
+                    </div>
+
+                    <!-- Match Goals -->
+                    <div class="odds-set" data-odds="goals">
+                      <div class="odds-labels">
+                        <span>Over 2.5</span>
+                        <span>Under 2.5</span>
+                        <span>BTTS</span>
+                      </div>
+                      <div class="odds-buttons">
+                        <button class="odds-btn" data-outcome="over" data-odd="1.75">1.75</button>
+                        <button class="odds-btn" data-outcome="under" data-odd="2.05">2.05</button>
+                        <button class="odds-btn" data-outcome="btts" data-odd="1.90">1.90</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="match-actions">
+                  <button class="action-btn stats-btn" title="Statistics">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor" />
+                    </svg>
+                  </button>
+
+                  <button class="action-btn tv-btn" title="Watch Live">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2"
+                        fill="none" />
+                      <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" />
+                      <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                  </button>
+
+                  <button class="action-btn more-btn" title="More Options">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="1" stroke="currentColor" stroke-width="2" fill="currentColor" />
+                      <circle cx="12" cy="5" r="1" stroke="currentColor" stroke-width="2" fill="currentColor" />
+                      <circle cx="12" cy="19" r="1" stroke="currentColor" stroke-width="2" fill="currentColor" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+  </section>
+
+  <!-- ==================== SOCIAL FEED SECTION ==================== -->
+
+  <section id="socialSection" class="page-section">
+    <div class="wrap">
+      <!-- Header -->
+      <div class="social-header">
+        <h1 class="social-title">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffd34d" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          Social Feed
+        </h1>
+        <p class="social-subtitle">
+          Join the conversation • Share your predictions • Connect with winners
+        </p>
+      </div>
+
+      <!-- Trending Topics -->
+      <div class="trending-container">
+        <div class="trending-tags">
+          <div class="trending-tag">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            #NBAFinals
+          </div>
+          <div class="trending-tag">#ChampionsLeague</div>
+          <div class="trending-tag">#SuperBowl</div>
+          <div class="trending-tag">#FreeBets</div>
+        </div>
+      </div>
+
+      <!-- Posts Feed -->
+      <div class="posts-container" id="postsContainer">
+        <!-- Posts will be dynamically inserted here by JavaScript -->
+      </div>
+
+      <!-- Load More Button -->
+      <div class="load-more-container">
+        <button class="load-more-btn" id="loadMoreBtn">Load More Posts</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comment Modal -->
+  <div id="commentModal" class="comment-modal hidden">
+    <div class="comment-modal-overlay"></div>
+    <div class="comment-modal-content">
+      <div class="comment-modal-header">
+        <h3>Comments (142)</h3>
+        <button class="close-comment-modal" id="closeCommentModal">×</button>
+      </div>
+
+      <div class="comment-input-section">
+        <img src="user-avatar.jpg" alt="You" class="comment-avatar">
+        <input type="text" class="comment-input" placeholder="Write a comment..." id="commentInput">
+        <button class="post-comment-btn" id="postCommentBtn">Post</button>
+      </div>
+
+      <div class="comments-list" id="commentsList">
+        <!-- Comments will be added here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Modal -->
+  <div id="shareModal" class="share-modal hidden">
+    <div class="share-modal-overlay"></div>
+    <div class="share-modal-content">
+      <div class="share-modal-header">
+        <h3>Share this post</h3>
+        <button class="close-share-modal" id="closeShareModal">×</button>
+      </div>
+
+      <div class="share-post-preview" id="sharePostPreview">
+        <!-- Post preview will be inserted here -->
+      </div>
+
+      <div class="share-link-section">
+        <input type="text" class="share-link-input" id="shareLinkInput" readonly>
+        <button class="copy-link-btn" id="copyLinkBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy Link
+        </button>
+      </div>
+
+      <div class="share-options">
+        <button class="share-option" data-share="facebook">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#1877F2">
+            <path
+              d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+          </svg>
+          <span>Facebook</span>
+        </button>
+
+        <button class="share-option" data-share="twitter">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#1DA1F2">
+            <path
+              d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
+          </svg>
+          <span>Twitter</span>
+        </button>
+
+        <button class="share-option" data-share="whatsapp">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#25D366">
+            <path
+              d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+          </svg>
+          <span>WhatsApp</span>
+        </button>
+
+        <button class="share-option" data-share="telegram">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#0088cc">
+            <path
+              d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.141.122.098.155.23.171.324.016.093.036.306.02.472z" />
+          </svg>
+          <span>Telegram</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASINO SECTION -->
+  <section class="casino-section section page-section" id="casinoPage">
+    <div class="wrap">
+      <!-- Section Header -->
+      <div class="casino-header">
+        <div class="section-hero">
+          <span class="casino-icon">🎰</span>
+          <div class="hero-text">
+            <h2 class="hero-title">Casino Games</h2>
+            <p class="hero-subtitle">Play the hottest casino games</p>
+          </div>
+        </div>
+        <button class="view-all-btn">
+          View All
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Casino Games Carousel -->
+      <div class="casino-carousel">
+        <button class="carousel-btn carousel-prev" id="casinoPrev">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+
+        <div class="casino-track" id="casinoTrack">
+
+          <!-- Game Card 1 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">🎡</div>
+              <div class="game-badge">Popular</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">European Roulette</h3>
+              <p class="game-provider">Evolution Gaming</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 2 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">🃏</div>
+              <div class="game-badge hot">Hot</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Blackjack Classic</h3>
+              <p class="game-provider">Pragmatic Play</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 3 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">🎰</div>
+              <div class="game-badge">New</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Mega Fortune</h3>
+              <p class="game-provider">NetEnt</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 4 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">♠️</div>
+              <div class="game-badge">Popular</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Texas Hold'em</h3>
+              <p class="game-provider">Evolution Gaming</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 5 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">💎</div>
+              <div class="game-badge hot">Hot</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Baccarat Pro</h3>
+              <p class="game-provider">Pragmatic Play</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 6 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">🎲</div>
+              <div class="game-badge">New</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Craps Deluxe</h3>
+              <p class="game-provider">NetEnt</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 7 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">🎪</div>
+              <div class="game-badge">Popular</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Crazy Time</h3>
+              <p class="game-provider">Evolution Gaming</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 8 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">💰</div>
+              <div class="game-badge hot">Hot</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Money Wheel</h3>
+              <p class="game-provider">Pragmatic Play</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+          <!-- Game Card 9 -->
+          <div class="casino-card">
+            <div class="casino-card-image">
+              <div class="game-icon">🎯</div>
+              <div class="game-badge">New</div>
+            </div>
+            <div class="casino-card-content">
+              <h3 class="game-title">Dragon Tiger</h3>
+              <p class="game-provider">NetEnt</p>
+              <button class="play-btn">Play Now</button>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="carousel-btn carousel-next" id="casinoNext">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASK AI SECTION -->
+  <section class="ask-ai-section section page-section" id="askAiPage">
+    <div class="wrap">
+
+
+      <!-- AI Prediction Box -->
+      <div class="ai-prediction-container">
+
+        <!-- Robot Head - ADD THIS IF MISSING -->
+        <div class="robot-head-top">
+          <div class="robot-head">
+            <div class="robot-eyes">
+              <span class="eye left"></span>
+              <span class="eye right"></span>
+            </div>
+            <div class="robot-antenna"></div>
+          </div>
+        </div>
+
+        <!-- Robot Body Wrapping the Box -->
+        <div class="robot-body-wrapper">
+
+          <!-- Robot Left Arm -->
+          <div class="robot-arm left-arm">
+            <div class="robot-hand left-hand">🤖</div>
+          </div>
+
+          <!-- Main Prediction Box -->
+          <div class="ai-prediction-box">
+
+            <!-- Search Section -->
+            <div class="ai-search-section">
+              <label class="ai-label">
+                LET ME GUESS THE WINNER
+              </label>
+              <input type="text" id="aiEventSearch" class="ai-search-input" placeholder="Search for a match...">
+              <div id="aiSearchResults" class="ai-search-results hidden"></div>
+            </div>
+
+            <!-- Selected Event Display -->
+            <div id="selectedEventDisplay" class="selected-event hidden">
+              <div class="event-info">
+                <span class="event-league">🏆 Premier League</span>
+                <h3 class="event-match">Arsenal vs Chelsea</h3>
+                <span class="event-time">Today 19:00</span>
+              </div>
+            </div>
+
+            <!-- AI Prediction Results (Template - Always in HTML) -->
+            <div id="aiPredictionResults" class="ai-prediction-results hidden">
+              <div class="prediction-header">
+                <span class="ai-brain-icon">🧠</span>
+                <h3>AI Prediction</h3>
+                <span class="prediction-badge" id="totalBetsCount">0 signals analyzed</span>
+              </div>
+              <div class="prediction-bars">
+
+                <!-- Home Team -->
+                <div class="prediction-side home-side">
+                  <div class="side-header">
+                    <span class="team-name" id="homeTeamName">Home Team</span>
+                    <span class="prediction-percent home-percent" id="homePercent">0%</span>
+                  </div>
+                  <div class="prediction-bar-container">
+                    <div class="prediction-bar home-bar" id="homeBar" style="width: 0%"></div>
+                  </div>
+                  <div class="bet-count" id="homeBetsCount">0 indicators favor home win</div>
+                </div>
+
+                <div class="vs-divider">VS</div>
+
+                <!-- Away Team -->
+                <div class="prediction-side away-side">
+                  <div class="side-header">
+                    <span class="team-name" id="awayTeamName">Away Team</span>
+                    <span class="prediction-percent away-percent" id="awayPercent">0%</span>
+                  </div>
+                  <div class="prediction-bar-container">
+                    <div class="prediction-bar away-bar" id="awayBar" style="width: 0%"></div>
+                  </div>
+                  <div class="bet-count" id="awayBetsCount">0 indicators favor away win</div>
+                </div>
+
+              </div>
+
+
+
+              <div class="ai-recommendation">
+                <div class="recommendation-icon">💡</div>
+                <div class="recommendation-text" id="aiRecommendation">
+                  <strong>My Analysis:</strong> Waiting for prediction...
+                </div>
+              </div>
+
+            </div>
+            <!-- Get Prediction Button -->
+            <button id="getPredictionBtn" class="get-prediction-btn hidden">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+              Get AI Prediction
+            </button>
+
+          </div>
+
+          <!-- Robot Right Arm -->
+          <div class="robot-arm right-arm">
+            <div class="robot-hand right-hand">🤖</div>
+          </div>
+
+        </div>
+
+        <!-- Robot Chest -->
+        <div class="robot-chest">
+          <div class="chest-panel">
+            <div class="status-lights">
+              <div class="status-light active"></div>
+              <div class="status-light"></div>
+              <div class="status-light active"></div>
+            </div>
+            <div style="color: #1e293b; font-weight: 700; font-size: 11px;">TIPSTER AI</div>
+          </div>
+        </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="footer-container">
+
+      <!-- Column 1: USEFUL LINKS -->
+      <div class="footer-column">
+        <h3>USEFUL LINKS</h3>
+        <div class="footer-links">
+          <a href="#" class="footer-link">Help Center</a>
+          <a href="#" class="footer-link">Betting Rules</a>
+          <a href="#" class="footer-link">Terms & Conditions</a>
+          <a href="#" class="footer-link">Responsible Gaming & Player Protection</a>
+          <a href="#" class="footer-link">Account Verification</a>
+          <a href="#" class="footer-link">Security</a>
+          <a href="#" class="footer-link">Bonus Terms</a>
+          <a href="#" class="footer-link">Transactions</a>
+          <a href="#" class="footer-link">Betano bonuses and offers</a>
+          <a href="#" class="footer-link">Guides</a>
+          <a href="#" class="footer-link">Privacy Policy</a>
+          <a href="#" class="footer-link">Accessibility Statement</a>
+          <a href="#" class="footer-link">Affiliates</a>
+          <a href="#" class="footer-link">Careers</a>
+        </div>
+      </div>
+
+
+      <!-- About Us -->
+      <div class="footer-column">
+        <h3>About Us</h3>
+        <p class="footer-about-text">
+          Kaizen Gaming International Ltd. with registration number in Malta - C 43209, with registered office at Unit
+          41/42 Level 4 Pendergardens Business Centre, TRIQ SANT ANNA GH QALI SAN PAWL IL-BAHAR, Malta, is a licensed
+          organizer of online gambling, holding licenses under Article 34, paragraph 1 of the Law on Gambling.
+        </p>
+        <p class="footer-about-text" style="margin-top: 12px; font-size: 12px;">
+          *The Super Odds offer applies to the market "Full Time Result" until the start of the match, in selected
+          matches that are indicated with the SO symbol.
+        </p>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="footer-column">
+        <h3>Payment Methods</h3>
+        <div class="payment-methods-grid">
+          <div class="payment-icon">💳 VISA</div>
+          <div class="payment-icon">💳 Mastercard</div>
+          <div class="payment-icon">💳 Maestro</div>
+          <div class="payment-icon">🎫 Paysafe</div>
+          <div class="payment-icon">💰 EasyPay</div>
+          <div class="payment-icon">⚡ FastPay</div>
+          <div class="payment-icon">💼 EzeeWallet</div>
+          <div class="payment-icon">🍎 Apple Pay</div>
+          <div class="payment-icon">🇧🇬 ePay.bg</div>
+          <div class="payment-icon">💸 Skrill</div>
+          <div class="payment-icon">🔵 Google Pay</div>
+          <div class="payment-icon">💵 Neteller</div>
+        </div>
+      </div>
+
+      <!-- Mobile Apps & Awards -->
+      <div class="footer-column">
+        <h3>Mobile Apps</h3>
+        <p class="mobile-apps-text">
+          Live the Betano experience wherever you are, from our mobile site and mobile app for Android and iOS:
+        </p>
+
+        <div class="app-buttons">
+          <a href="#" class="app-download-btn">
+            <div class="app-icon">🍎</div>
+            <div class="app-info">
+              <span class="app-label">Download on</span>
+              <span class="app-name">App Store</span>
+            </div>
+          </a>
+          <a href="#" class="app-download-btn">
+            <div class="app-icon">🤖</div>
+            <div class="app-info">
+              <span class="app-label">Get it on</span>
+              <span class="app-name">Android App</span>
+            </div>
+          </a>
+        </div>
+
+        <h3 style="margin-top: 32px;">Awards and Distinctions</h3>
+        <div class="awards-grid">
+          <div class="award-badge">🏆 EGR Operator Awards 2024</div>
+          <div class="award-badge">🏆 EGR Operator Awards 2023</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Bottom -->
+    <div class="footer-bottom">
+      <p class="footer-bottom-text">
+        © 2025 BetNextGen. All rights reserved. | 18+ Only | Please gamble responsibly
+      </p>
+      <div class="footer-legal-links">
+        <a href="#" class="footer-legal-link">Privacy Policy</a>
+        <a href="#" class="footer-legal-link">Terms of Service</a>
+        <a href="#" class="footer-legal-link">Responsible Gaming</a>
+        <a href="#" class="footer-legal-link">Help Center</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+
 </body>
+
 </html>

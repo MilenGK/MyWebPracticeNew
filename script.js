@@ -1,101 +1,1049 @@
+(function () {
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const profileWrapper = document.getElementById("profileWrapper");
+  if (!isLoggedIn) {
+    if (profileWrapper) profileWrapper.classList.add("hidden");
+  } else {
+    if (profileWrapper) profileWrapper.classList.remove("hidden");
+  }
+})();
+
+let userBets = JSON.parse(localStorage.getItem('userBets')) || [];
+
+// Constants for Settings (moved from later in file to prevent ReferenceError)
+const THEME_KEY = 'betnextgen-theme';
+const ODDS_FMT_KEY = 'betnextgen-oddsfmt-v1';
+let oddsMode = localStorage.getItem(ODDS_FMT_KEY) || 'dec';
+
+function updateUIAfterAuth(isLoggedIn) {
+  const authButtons = document.getElementById("authButtons");
+  const logoutWrapper = document.getElementById("logoutButtonWrapper");
+  const profileWrapper = document.getElementById("profileWrapper");
+  const floatingBetSlip = document.getElementById("floatingBetSlip");
+
+  if (isLoggedIn) {
+    localStorage.setItem("isLoggedIn", "true");
+    document.body.classList.add('user-logged-in');
+
+    authButtons?.classList.add("hidden");
+    logoutWrapper?.classList.remove("hidden");
+    profileWrapper?.classList.remove("hidden");
+    floatingBetSlip?.classList.remove("hidden");
+    document.getElementById('promotionsBtn').style.display = 'flex';
+
+    updateProfileDisplay();
+    initializeProfileListeners();
+
+    // ✅ ADD THIS - Sync wallet variable with balance
+    wallet = getWallet();
+    updateWalletUI();
+  } else {
+    localStorage.removeItem("isLoggedIn");
+    document.body.classList.remove('user-logged-in');
+
+    authButtons?.classList.remove("hidden");
+    document.getElementById('promotionsBtn').style.display = 'none';
+    logoutWrapper?.classList.add("hidden");
+    profileWrapper?.classList.add("hidden");
+    floatingBetSlip?.classList.add("hidden");
+
+    // ✅ ADD THIS - Reset wallet on logout
+    wallet = 0;
+    updateWalletUI();
+  }
+}
+function updateProfileDisplay() {
+  const usernameDisplay = document.getElementById("usernameDisplay");
+  const fullnameDisplay = document.getElementById("fullnameDisplay");
+  const userBalance = document.getElementById("userBalance");
+  const withdrawable = document.getElementById("withdrawable");
+  const credits = document.getElementById("credits");
+  const initialsSpan = document.querySelector(".avatar-initials");
+
+  // Get current user data
+  let currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+
+  // Set defaults if needed
+  currentUser = {
+    username: currentUser.username || "user",
+    fullName: currentUser.fullName || "",
+    firstName: currentUser.firstName || "",
+    lastName: currentUser.lastName || "",
+    gender: currentUser.gender || "other",
+    balance: currentUser.balance || 0.00,
+    withdrawable: currentUser.withdrawable || 0.00,
+    credits: currentUser.credits || 0.00,
+    ...currentUser
+  };
+
+  // Update initials
+  const initials = currentUser.firstName && currentUser.lastName
+    ? `${currentUser.firstName[0]}${currentUser.lastName[0]}`.toUpperCase()
+    : currentUser.username.slice(0, 2).toUpperCase();
+  if (initialsSpan) initialsSpan.textContent = initials;
+
+  // Create display name with title
+  const title = currentUser.gender === 'female' ? 'Ms.' : 'Mr.';
+  const displayName = currentUser.firstName && currentUser.lastName
+    ? `${title} ${currentUser.firstName} ${currentUser.lastName}`
+    : currentUser.fullName || currentUser.username;
+
+  // Update all profile elements
+  if (fullnameDisplay) fullnameDisplay.textContent = displayName;
+  if (usernameDisplay) usernameDisplay.textContent = `@${currentUser.username}`;
+  if (userBalance) userBalance.textContent = `${currentUser.balance.toFixed(2)} лв`;
+  if (withdrawable) withdrawable.textContent = `${currentUser.withdrawable.toFixed(2)} лв`;
+  if (credits) credits.textContent = `${currentUser.credits.toFixed(2)} лв`;
+}
+
+// Navigation links functionality
+document.querySelectorAll('.nav__link').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+
+    // Remove active class from all
+    document.querySelectorAll('.nav__link').forEach(l => l.classList.remove('active'));
+
+    // Add active to clicked
+    link.classList.add('active');
+
+    // Get the section
+    const section = link.getAttribute('href').replace('#', '');
+
+    // Handle navigation
+    if (section === 'all-sports') {
+      showSection('inPlayPage'); // Show In Play/All Sports
+      toast('Showing All Sports');
+    } else if (section === 'in-play') {
+      showSection('inPlayPage'); // Show In Play
+      toast('Loading Live Matches');
+    } else if (section === 'casino') {
+      showSection('casinoPage'); // Show Casino section
+      toast('Opening Casino');
+    } else if (section === 'social') {
+      showSection('socialPage'); // Show Social
+      toast('Loading Social Feed');
+    } else if (section === 'ask_ai') {  // CHANGED: underscore instead of dash
+      showSection('askAiPage');
+      toast('AI Assistant Ready');
+    }
+  });
+});
+
+// Function to show sections
+function showSection(sectionId) {
+  // Hide all sections
+  document.querySelectorAll('.page-section').forEach(section => {
+    section.classList.remove('active');
+  });
+
+  // Show the selected section
+  const targetSection = document.getElementById(sectionId);
+  if (targetSection) {
+    targetSection.classList.add('active');
+    targetSection.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+// Logo button click - Home navigation
+const logoBtn = document.getElementById('navToggle');
+
+if (logoBtn) {
+  logoBtn.addEventListener('click', () => {
+    // On mobile: toggle sidebar
+    if (window.innerWidth <= 1024) {
+      document.body.classList.toggle('nav-open');
+      const backdrop = document.getElementById('navBackdrop');
+      if (backdrop) backdrop.hidden = !document.body.classList.contains('nav-open');
+    }
+    // On desktop: go to home
+    else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.querySelectorAll('.nav__link').forEach(l => l.classList.remove('active'));
+      document.querySelector('.nav__link')?.classList.add('active');
+      toast('🏠 Home');
+    }
+  });
+}
+
+// ← MOVED OUTSIDE - This is now a separate function
+function initializeProfileListeners() {
+  const profileBtn = document.getElementById("profileToggleBtn");
+  const panel = document.getElementById("profilePanel");
+
+  if (!profileBtn || !panel) return;
+
+  // Remove old listeners to prevent duplicates
+  const newProfileBtn = profileBtn.cloneNode(true);
+  profileBtn.parentNode.replaceChild(newProfileBtn, profileBtn);
+
+  // Add fresh click listener
+  newProfileBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    panel.classList.toggle("show");
+  });
+
+  // Close panel when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!panel?.contains(e.target) && !newProfileBtn?.contains(e.target)) {
+      panel?.classList.remove("show");
+    }
+  });
+
+
+
+  // Logout button handler
+  const profileLogoutBtn = document.getElementById("logoutBtn");
+  if (profileLogoutBtn) {
+    profileLogoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("isLoggedIn");
+      updateUIAfterAuth(false);
+      panel?.classList.remove("show");
+      showAuthMessage("See you soon 👋", 2000);
+    });
+  }
+  // Tab switching logic
+  document.querySelectorAll('.profile-tabs .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.profile-tabs .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+    });
+  });
+
+  // Grid items click handlers - Add to EACH grid item directly
+  document.querySelectorAll('.grid-item').forEach(gridItem => {
+    gridItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const text = gridItem.textContent.trim();
+      panel.classList.remove('show');
+
+      if (text.includes('Bank')) alert('Bank clicked!');
+      else if (text.includes('Messages')) alert('Messages clicked!');
+      else if (text.includes('My Account')) alert('My Account clicked!');
+      else if (text.includes('Gambling Controls')) alert('Gambling Controls clicked!');
+      else if (text.includes('My Activity')) alert('My Activity clicked!');
+      else if (text.includes('History')) alert('History clicked!');
+    });
+  });
+}
+
+// ============================================
+//  SETTINGS DROPDOWN INITIALIZATION
+// ============================================
+function initializeSettingsDropdown() {
+  const settingsToggle = document.getElementById('settingsToggle');
+  const settingsDropdown = document.getElementById('settingsDropdown');
+  const themeToggleDropdown = document.getElementById('themeToggleDropdown');
+  const oddsFormatDropdown = document.getElementById('oddsFormatDropdown');
+
+  // Exit if elements don't exist
+  if (!settingsToggle || !settingsDropdown) {
+    console.warn('Settings dropdown elements not found');
+    return;
+  }
+
+  // Toggle dropdown
+  settingsToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsDropdown.classList.toggle('hidden');
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.settings-dropdown-wrapper')) {
+      settingsDropdown.classList.add('hidden');
+    }
+  });
+
+  // Theme toggle in dropdown
+  if (themeToggleDropdown) {
+    themeToggleDropdown.addEventListener('click', () => {
+      const current = localStorage.getItem(THEME_KEY) || 'dark';
+      const newTheme = current === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
+      const themeText = document.getElementById('themeText');
+      if (themeText) {
+        themeText.textContent = newTheme === 'dark' ? 'Dark' : 'Light';
+      }
+    });
+  }
+
+  // Odds format change
+  if (oddsFormatDropdown) {
+    oddsFormatDropdown.addEventListener('change', (e) => {
+      oddsMode = e.target.value;
+      localStorage.setItem(ODDS_FMT_KEY, oddsMode);
+      repaintOdds();
+    });
+
+    // Set initial values
+    oddsFormatDropdown.value = localStorage.getItem(ODDS_FMT_KEY) || 'dec';
+  }
+}
+
+// ✅ Show centered auth message
+function showAuthMessage(message, duration = 3000) {
+  const msgEl = document.getElementById("authMessage");
+  msgEl.textContent = message;
+  msgEl.classList.remove("hidden");
+  msgEl.classList.add("show");
+
+  setTimeout(() => {
+    msgEl.classList.remove("show");
+    msgEl.classList.add("hidden");
+  }, duration);
+}
+
+// —————— Profile initialization + Auth handling ——————
+document.addEventListener("DOMContentLoaded", () => {
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  updateUIAfterAuth(isLoggedIn);
+
+  // Initialize settings dropdown
+  initializeSettingsDropdown();
+
+  const signupForm = document.getElementById("signupForm");
+  const dobInput = document.getElementById("suDob");
+  const dobError = document.getElementById("dobError");
+
+  function isAtLeast18(dateStr) {
+    const dob = new Date(dateStr);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age >= 18;
+  }
+
+  if (signupForm) {
+    signupForm.addEventListener("submit", function (e) {
+      dobError.style.display = "none"; // reset
+
+      const dobValue = dobInput.value;
+      if (!isAtLeast18(dobValue)) {
+        e.preventDefault();
+        dobError.style.display = "block";
+        dobInput.focus();
+        return;
+      }
+
+      const pass = document.getElementById("suPassword").value;
+      const confirm = document.getElementById("suConfirm").value;
+      if (pass !== confirm) {
+        e.preventDefault();
+        alert("Passwords do not match.");
+        return;
+      }
+
+      if (isLoggedIn) {
+        updateProfileDisplay();
+        initializeProfileListeners(); // Use the new function
+      }
+      // Allow signup to proceed
+      // Possibly call updateUIAfterAuth(true) here or redirect
+    });
+  }
+
+  // =========================
+  // Remember email support
+  const remembered = localStorage.getItem('rememberEmail') || '';
+  const loginEmail = $$('#loginEmail'); const suEmail = $$('#suEmail');
+  if (remembered) {
+    if (loginEmail) loginEmail.value = remembered;
+    if (suEmail) suEmail.value = remembered;
+  }
+
+  // LOGIN with password validation
+  const loginFormEl = document.getElementById("loginForm");
+  if (loginFormEl) {
+    loginFormEl.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+
+      // ✅ NEW CODE - Includes balance
+      const hardcodedAccounts = [
+        {
+          email: "demo@example.com",
+          password: "Demo123!",
+          firstName: "John",
+          lastName: "Doe",
+          gender: "male",
+          username: "demo",
+          balance: 100.00,
+          withdrawable: 0.00,
+          credits: 100.00
+        },
+        {
+          email: "test@example.com",
+          password: "Test123!",
+          firstName: "Jane",
+          lastName: "Smith",
+          gender: "female",
+          username: "test",
+          balance: 100.00,
+          withdrawable: 0.00,
+          credits: 100.00
+        }
+      ];
+
+      // ✅ GET SAVED ACCOUNTS FROM SIGNUP
+      const savedAccounts = JSON.parse(localStorage.getItem('demoAccounts')) || [];
+
+      // ✅ COMBINE BOTH ACCOUNT LISTS
+      const allAccounts = [...hardcodedAccounts, ...savedAccounts];
+
+      // Check credentials
+      const account = allAccounts.find(acc => acc.email === email && acc.password === password);
+
+      // ✅ NEW CODE - Loads saved balance
+      if (account) {
+        const userData = {
+          username: account.username || email.split('@')[0],
+          fullName: `${account.firstName} ${account.lastName}`,
+          firstName: account.firstName,
+          lastName: account.lastName,
+          gender: account.gender,
+          email: email,
+          balance: account.balance || 0.00,           // ✅ LOADS SAVED BALANCE
+          withdrawable: account.withdrawable || 0.00, // ✅ LOADS SAVED BALANCE
+          credits: account.credits || 0.00            // ✅ LOADS SAVED BALANCE
+        };
+        localStorage.setItem("currentUser", JSON.stringify(userData));
+        localStorage.setItem('isLoggedIn', 'true');
+        document.body.classList.add('user-logged-in');
+
+        updateUIAfterAuth(true);
+        document.getElementById("loginModal")?.classList.remove("open");
+        showAuthMessage(`Welcome back, ${account.firstName}!`, 2000);
+      } else {
+        showAuthMessage("Invalid email or password. Try demo@example.com / Demo123!", 3000);
+      }
+    });
+  }
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem('isLoggedIn');
+      document.body.classList.remove('user-logged-in');
+      updateUIAfterAuth(false); // 🔥 hides profile + shows login/register
+    });
+  }
+});
+
+
 // =========================
 // Utilities
 // =========================
 const $$ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
-const fmt = (n) => Number(n).toFixed(2);
+const fmtSafe = (n, digits = 2) => {
+  const v = Number(n);
+  return Number.isFinite(v) ? v.toFixed(digits) : '—';
+};
+
+// ---- Bet Slip visibility
+const betSlipPanel = document.querySelector('.floating-bet-slip');
+const slipList = document.getElementById('slipList');
+const slipEmpty = document.getElementById('slipEmpty');
+
+// ========================================
+// BET SLIP STICKY FIX - FOLLOWS SCREEN
+// ========================================
+
+function ensureBetSlipSticky() {
+  const betSlip = document.getElementById('floatingBetSlip');
+  const collapsed = document.getElementById('betSlipCollapsed');
+  const expanded = document.getElementById('betSlipExpanded');
+
+  if (!betSlip) {
+    console.log('❌ Bet slip not found, retrying...');
+    setTimeout(ensureBetSlipSticky, 500);
+    return;
+  }
+
+  console.log('✅ Bet slip found!');
+
+  // Move to body level if not already there
+  if (betSlip.parentElement && betSlip.parentElement.tagName !== 'BODY') {
+    document.body.appendChild(betSlip);
+    console.log('✅ Bet slip moved to body level');
+  }
+
+  // Show bet slip if there are items
+  if (slip.length > 0) {
+    collapsed.style.display = 'flex';
+  }
+
+  // Remove body class
+  document.body.classList.remove('betslip-open');
+}
+
+// Update collapsed trigger when bets change
+function updateBetSlipTrigger() {
+  const trigger = document.getElementById('betSlipCollapsed');
+  const count = document.querySelector('.slip-count');
+  const total = document.querySelector('.slip-odds');
+
+  if (!trigger) return;
+
+  if (slip.length > 0) {
+    trigger.style.display = 'flex';
+
+    // Update count
+    if (count) {
+      count.textContent = slip.length;
+      count.style.animation = 'betCountPulse 0.3s ease-out';
+    }
+
+    // Calculate total odds
+    const totalOdds = slip.reduce((acc, bet) => acc * bet.odd, 1);
+    if (total) {
+      total.textContent = totalOdds.toFixed(2);
+    }
+
+    // Add pulse animation
+    trigger.classList.add('updated');
+    setTimeout(() => trigger.classList.remove('updated'), 600);
+
+  } else {
+    trigger.style.display = 'none';
+  }
+}
+
+// Call on page load and whenever bets change
+document.addEventListener('DOMContentLoaded', () => {
+  ensureBetSlipSticky();
+  updateBetSlipTrigger();
+});
+
+// Update trigger whenever slip changes
+// Update the existing saveSlip function to also update collapsed state
+const _wrappedSaveSlip = saveSlip;
+saveSlip = function () {
+  _wrappedSaveSlip(); // This already calls updateBetSlipTrigger & ensureBetSlipSticky
+  updateCollapsedBetSlip();
+  renderBetItems();
+};
+
+// Re-check positioning on scroll (just in case)
+let scrollTimeout;
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(ensureBetSlipSticky, 100);
+}, { passive: true });
+
+// Re-check on window resize
+window.addEventListener('resize', ensureBetSlipSticky);
+
+// ---- Toast feedback
+function toast(msg, ms = 1400) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), ms);
+}
+
 
 // =========================
 // Demo Data
 // =========================
 const MATCHES = [
-  { id: 'f1', sport: 'Football', comp: 'Premier Cup', time: 'Today 19:00', teams: ['Arsenal', 'Chelsea'], odds: { '1': 1.85, 'X': 3.50, '2': 4.20 } },
-  { id: 'f2', sport: 'Football', comp: 'Premier Cup', time: 'Today 21:00', teams: ['Liverpool', 'Man City'], odds: { '1': 2.10, 'X': 3.20, '2': 3.00 } },
-  { id: 't1', sport: 'Tennis', comp: 'ATP 500', time: 'Today 15:00', teams: ['Medvedev', 'Zverev'], odds: { '1': 1.70, '2': 2.10 } },
-  { id: 't2', sport: 'Tennis', comp: 'WTA 1000', time: 'Today 17:00', teams: ['Swiatek', 'Sabalenka'], odds: { '1': 1.90, '2': 1.80 } },
-  { id: 'b1', sport: 'Basketball', comp: 'NBA', time: 'Today 20:00', teams: ['Lakers', 'Clippers'], odds: { '1': 1.50, '2': 'abc' } },
-  { id: 'b2', sport: 'Basketball', comp: 'NBA', time: 'Tomorrow 19:30', teams: ['Warriors', 'Celtics'], odds: { '1': 1.80, '2': 2.00 } },
+  { id: 'f1', sport: 'Football', comp: 'Premier League', time: 'Today 19:00', teams: ['Arsenal', 'Chelsea'], odds: { '1': 1.85, 'X': 3.50, '2': 4.20 }, likes: 342, isLiked: false },
+  { id: 'f2', sport: 'Football', comp: 'Premier League', time: 'Today 21:00', teams: ['Liverpool', 'Man City'], odds: { '1': 2.10, 'X': 3.20, '2': 3.00 }, likes: 567, isLiked: false },
+  { id: 't1', sport: 'Tennis', comp: 'ATP 500', time: 'Today 15:00', teams: ['Medvedev', 'Zverev'], odds: { '1': 1.70, '2': 2.10 }, likes: 198, isLiked: false },
+  { id: 't2', sport: 'Tennis', comp: 'WTA 1000', time: 'Today 17:00', teams: ['Swiatek', 'Sabalenka'], odds: { '1': 1.90, '2': 1.80 }, likes: 234, isLiked: false },
+  { id: 'b1', sport: 'Basketball', comp: 'NBA', time: 'Today 20:00', teams: ['Lakers', 'Clippers'], odds: { '1': 1.50, '2': 2.40 }, likes: 421, isLiked: false },
+  { id: 'b2', sport: 'Basketball', comp: 'NBA', time: 'Tomorrow 19:30', teams: ['Warriors', 'Celtics'], odds: { '1': 1.80, '2': 2.00 }, likes: 389, isLiked: false },
 ];
+function renderCarousel(matches) {
+  const track = document.getElementById('carouselTrack');
+  if (!track) return;
 
-const TRENDING = [
-  { label: 'England Premier League', icon: '#icon-ball' },
-  { label: 'UEFA Champions League', icon: '#icon-ball' },
-  { label: 'UEFA League Europe', icon: '#icon-ball' },
-  { label: 'NBA', icon: '#icon-basket' },
-  { label: 'NFL', icon: '#icon-ball' },
-  { label: 'MLB', icon: '#icon-ball' },
-  { label: 'Rolland Garros', icon: '#icon-tennis' },
-  { label: 'Wimbeldon', icon: '#icon-tennis' },
-  { label: 'US Open', icon: '#icon-tennis' },
-];
+  track.innerHTML = matches.map(m => `
+      <div class="event-card" data-id="${m.id}">
+        <!-- Fire Like Button -->
+        <button class="event-like-btn ${m.isLiked ? 'liked' : ''}" data-event-id="${m.id}">
+          🔥
+          <span class="like-count">${m.likes}</span>
+        </button>
+  
+        <div class="event-sport">
+          <svg class="icon" width="16" height="16"><use href="#icon-ball"/></svg>
+          <span>${m.sport}</span>
+        </div>
+        <strong>${m.teams[0]} vs ${m.teams[1]}</strong>
+        <div class="meta">${m.comp} • ${m.time}</div>
+        <div class="carousel-odds"></div>
+      </div>
+    `).join('');
+}
+
+// Event Like System
+let eventLikes = JSON.parse(localStorage.getItem('eventLikes')) || {};
+
+// Load likes on page load
+function loadEventLikes() {
+  MATCHES.forEach(match => {
+    if (eventLikes[match.id]) {
+      match.likes = eventLikes[match.id].likes;
+      match.isLiked = eventLikes[match.id].isLiked;
+    }
+  });
+}
+
+// Handle event like button click
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.event-like-btn')) {
+    e.stopPropagation();
+    const btn = e.target.closest('.event-like-btn');
+    const eventId = btn.dataset.eventId;
+    toggleEventLike(eventId);
+  }
+});
+
+function toggleEventLike(eventId) {
+  const match = MATCHES.find(m => m.id === eventId);
+  if (!match) return;
+
+  // Toggle like
+  match.isLiked = !match.isLiked;
+
+  if (match.isLiked) {
+    match.likes++;
+  } else {
+    match.likes--;
+  }
+
+  // Save to localStorage
+  eventLikes[eventId] = {
+    isLiked: match.isLiked,
+    likes: match.likes
+  };
+  localStorage.setItem('eventLikes', JSON.stringify(eventLikes));
+
+  // Refresh carousel sorted by likes
+  updateCarousel();
+}
+
+// Update carousel with most liked events
+function updateCarousel() {
+  // Sort by likes (highest first)
+  const sortedMatches = [...MATCHES].sort((a, b) => b.likes - a.likes);
+  renderCarousel(sortedMatches);
+
+  // Re-hydrate odds after render
+  requestAnimationFrame(() => {
+    hydrateCarouselOdds();
+  });
+}
+
+// Initialize on page load
+loadEventLikes();
+updateCarousel(); // Use this instead of renderCarousel(MATCHES)
+
+updateCarousel(); // This sorts by likes automatically
+requestAnimationFrame(() => {
+  hydrateCarouselOdds();
+});
+
+
+document.querySelector('.carousel-btn.left')?.addEventListener('click', () => {
+  const track = document.getElementById('carouselTrack');
+  if (track) {
+    const scrollAmount = Math.min(track.clientWidth * 0.8, 400);
+    track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+  }
+});
+
+document.querySelector('.carousel-btn.right')?.addEventListener('click', () => {
+  const track = document.getElementById('carouselTrack');
+  if (track) {
+    const scrollAmount = Math.min(track.clientWidth * 0.8, 400);
+    track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  }
+});
+
+// Auto-scroll carousel
+function startCarouselAutoScroll() {
+  const track = document.getElementById('carouselTrack');
+  if (!track) return;
+
+  carouselInterval = setInterval(() => {
+    if (!isCarouselPaused) {
+      const cardWidth = track.querySelector('.event-card')?.offsetWidth || 300;
+      const scrollAmount = Math.min(cardWidth, track.clientWidth * 0.8); // Never scroll more than 80% of viewport
+
+      if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 10) {
+        track.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  }, 5000);
+}
+
+let isCarouselPaused = false;
+
+// Pause on hover
+const carouselTrack = document.getElementById('carouselTrack');
+if (carouselTrack) {
+  carouselTrack.addEventListener('mouseenter', () => {
+    isCarouselPaused = true;
+  });
+
+  carouselTrack.addEventListener('mouseleave', () => {
+    isCarouselPaused = false;
+  });
+}
+
+// Also pause when user manually clicks buttons
+document.querySelector('.carousel-btn.left')?.addEventListener('click', () => {
+  clearInterval(carouselInterval);
+  setTimeout(() => startCarouselAutoScroll(), 10000); // Resume after 10 seconds
+});
+
+document.querySelector('.carousel-btn.right')?.addEventListener('click', () => {
+  clearInterval(carouselInterval);
+  setTimeout(() => startCarouselAutoScroll(), 10000); // Resume after 10 seconds
+});
+
+// Start auto-scroll when page loads
+startCarouselAutoScroll();
+
+// Restart if user interacts with odds buttons in carousel
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.event-card')) {
+    clearInterval(carouselInterval);
+    setTimeout(() => startCarouselAutoScroll(), 10000);
+  }
+});
+
+function hydrateCarouselOdds() {
+  const cards = document.querySelectorAll('.event-card[data-id]');
+  cards.forEach(card => {
+    const id = card.dataset.id;
+    const match = MATCHES.find(m => m.id === id);
+    if (!match || !match.odds) return;
+
+    const oddsWrap = card.querySelector('.carousel-odds');
+    if (!oddsWrap) return;
+
+    const allowed = match.sport === 'Football' ? ['1', 'X', '2'] : ['1', '2'];
+
+    const oddsHtml = allowed.map(outcome => {
+      const val = match.odds[outcome];
+      if (!Number.isFinite(val)) return '';
+      return `
+        <button class="odd-btn" data-match="${match.id}" data-outcome="${outcome}" data-odd="${val}">
+          <span class="lbl">${outcome}</span>
+          <span class="val">${val}</span>
+        </button>
+      `;
+    }).join('');
+
+    oddsWrap.innerHTML = oddsHtml;
+  });
+}
+
+
+
+const HISTORY_KEY = 'betnextgen-history-v1';
+
+function updateBetSlipTrigger() {
+  const trigger = document.getElementById('betSlipTrigger');
+  const count = document.querySelector('.bet-count');
+
+  if (slip.length > 0) {
+    trigger?.classList.remove('hidden');
+    if (count) count.textContent = slip.length;
+  } else {
+    trigger?.classList.add('hidden');
+  }
+}
 
 // =========================
 // State (with persistence)
 // =========================
-const SLIP_KEY = 'mbets-slip-v1';
+const SLIP_KEY = 'betnextgen-slip-v1';
 let slip = JSON.parse(localStorage.getItem(SLIP_KEY) || '[]');
 function saveSlip() { localStorage.setItem(SLIP_KEY, JSON.stringify(slip)); }
+
+// 🔥 WRAP saveSlip to update bet slip visibility
+const _originalSaveSlip = saveSlip;
+saveSlip = function () {
+  _originalSaveSlip();
+  updateBetSlipTrigger();
+  ensureBetSlipSticky();
+};
+
+const STAKE_KEY = 'betnextgen-stake-v1';
+
+// ==== Wallet & Mode ====
+const WALLET_KEY = 'betnextgen-wallet-v1';
+const MODE_KEY = 'betnextgen-mode-v1'; // 'combo' | 'singles'
+
+let wallet = 0;
+function getWallet() {
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  return Number(user.balance) || 0;
+}
+wallet = getWallet();
+let betMode = localStorage.getItem(MODE_KEY) || 'combo';
+
+function setWallet(v) {
+  wallet = Math.max(0, Number(v) || 0);
+
+  // Update currentUser
+  const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  user.balance = wallet;
+  user.withdrawable = wallet;
+  localStorage.setItem('currentUser', JSON.stringify(user));
+
+  // ✅ NEW - ALSO UPDATE demoAccounts
+  const accounts = JSON.parse(localStorage.getItem('demoAccounts') || '[]');
+  const accountIndex = accounts.findIndex(acc => acc.email === user.email);
+
+  if (accountIndex !== -1) {
+    accounts[accountIndex].balance = wallet;
+    accounts[accountIndex].withdrawable = wallet;
+    accounts[accountIndex].credits = user.credits || 0;
+    localStorage.setItem('demoAccounts', JSON.stringify(accounts));
+  }
+
+  updateProfileDisplay();
+  updateWalletUI();
+}
+
+function updateWalletUI() {
+  const el = document.getElementById('walletBalance');
+  if (el) el.textContent = '$' + fmtSafe(wallet);
+}
+function setMode(mode) {
+  betMode = mode === 'singles' ? 'singles' : 'combo';
+  localStorage.setItem(MODE_KEY, betMode);
+  renderSlip();
+}
+
+
+// Ensures mode toggle + wallet row exist in the Bet Slip (safe to call anytime)
+function ensureSlipChrome() {
+  const slipEl = document.querySelector('.bet-slip');
+  if (!slipEl) return;
+
+  // --- Mode toggle row (above slip list)
+  if (!document.getElementById('betModeRow')) {
+    const row = document.createElement('div');
+    row.id = 'betModeRow';
+    row.className = 'row';
+    row.style.margin = '6px 0 10px';
+    row.innerHTML = `
+      <div style="display:flex; gap:6px;">
+        <button id="modeSingles" class="btn btn-login" style="padding:6px 10px">Singles</button>
+        <button id="modeCombo"   class="btn btn-login" style="padding:6px 10px">Combo</button>
+      </div>
+      <span class="muted" style="font-size:12px;">Switch bet mode</span>
+    `;
+    const empty = document.getElementById('slipEmpty');
+    slipEl.insertBefore(row, empty ?? slipEl.firstChild);
+
+    const syncActive = () => {
+      document.getElementById('modeSingles')?.classList.toggle('btn-join', betMode === 'singles');
+      document.getElementById('modeCombo')?.classList.toggle('btn-join', betMode === 'combo');
+    };
+    row.addEventListener('click', (e) => {
+      if (e.target.id === 'modeSingles') setMode('singles');
+      if (e.target.id === 'modeCombo') setMode('combo');
+      syncActive();
+      toast(`Mode: ${betMode === 'singles' ? 'Singles' : 'Combo'}`);
+    });
+    syncActive();
+  }
+
+  // --- Wallet row (first line inside .slip-summary)
+  const summary = slipEl.querySelector('.slip-summary');
+  if (summary && !document.getElementById('walletRow')) {
+    const row = document.createElement('div');
+    row.id = 'walletRow';
+    row.className = 'row';
+    row.style.marginBottom = '6px';
+    row.innerHTML = `
+      <span>Balance</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <strong id="walletBalance">$0.00</strong>
+        <button id="addFunds" class="btn btn-login" style="padding:6px 10px">+ $100</button>
+      </div>
+    `;
+    summary.prepend(row);
+    document.getElementById('addFunds')?.addEventListener('click', () => setWallet(wallet + 100));
+  }
+
+  updateWalletUI();
+}
+
+// ✅ SIMPLE - Just sync wallet from existing profile balance
+setInterval(() => {
+  const profileBalance = document.getElementById('userBalance');
+  const walletAmount = document.querySelector('.balance-amount');
+
+  if (profileBalance && walletAmount) {
+    // Copy balance from profile to wallet
+    walletAmount.textContent = profileBalance.textContent;
+  }
+}, 1000); // Check every second
+
+// ✅ KEEP - Wallet click handler
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.wallet-balance')) {
+    console.log('Wallet clicked - open deposit modal');
+  }
+});
+
+// Sync wallet balance and color
+setInterval(() => {
+  const profileBalance = document.getElementById('userBalance');
+  const walletAmount = document.querySelector('.balance-amount');
+  const wallet = document.querySelector('.wallet-balance');
+
+  if (profileBalance && walletAmount && wallet) {
+    walletAmount.textContent = profileBalance.textContent;
+
+    const value = parseFloat(profileBalance.textContent);
+
+    // Red if ≤50, Green if >50
+    wallet.style.background = value <= 50
+      ? 'linear-gradient(135deg, #e74c3c, #c0392b)'
+      : 'linear-gradient(135deg, #2ecc71, #27ae60)';
+  }
+}, 1000);
+
+// Wallet click
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.wallet-balance')) {
+    console.log('Wallet clicked');
+  }
+});
+
+setInterval(() => {
+  const wallet = document.querySelector('.wallet-balance');
+  const myBets = document.querySelector('.my-bets-btn'); // 
+  const profile = document.getElementById('profileWrapper');
+
+  if (wallet && profile) {
+    wallet.style.display = profile.classList.contains('hidden') ? 'none' : 'flex';
+    myBets.style.display = profile.classList.contains('hidden') ? 'none' : 'block'; // ADD THIS
+  }
+}, 500);
+
+// Open My Bets Modal
+const myBetsBtn = document.getElementById('myBetsBtn');
+const myBetsModal = document.getElementById('myBetsModal');
+const closeMyBets = document.getElementById('closeMyBets');
+
+myBetsBtn?.addEventListener('click', () => {
+  myBetsModal.classList.remove('hidden');
+  renderMyBets(); // ADD THIS
+});
+
+// Close modal
+closeMyBets?.addEventListener('click', () => {
+  myBetsModal.classList.add('hidden');
+});
+
+// Close on overlay click
+document.querySelector('.my-bets-overlay')?.addEventListener('click', () => {
+  myBetsModal.classList.add('hidden');
+});
+
+// Tab switching
+document.querySelectorAll('.bet-tab').forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    const tabName = e.target.dataset.tab;
+
+    // Remove active from all tabs
+    document.querySelectorAll('.bet-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.bet-tab-content').forEach(c => c.classList.remove('active'));
+
+    // Add active to clicked tab
+    e.target.classList.add('active');
+    document.getElementById(`${tabName}-content`).classList.add('active');
+
+    console.log('Switched to:', tabName);
+    // TODO: Load bets for this tab
+  });
+});
+
+
 
 // =========================
 /* Rendering */
 // =========================
 function renderTrending() {
   const list = $$('#trendingList');
+  if (!list) return;
   const shuffled = TRENDING.slice().sort(() => Math.random() - 0.5);
   list.innerHTML = shuffled.map(item => (
-    `<li class="side-item"><svg class="icon" width="18" height="18"><use href="${item.icon}"/></svg>${item.label}</li>`
+    `<li class="side-item">
+       <svg class="icon" width="18" height="18"><use href="${item.icon}"/></svg>${item.label}
+     </li>`
   )).join('');
 }
 
 function displayName(sport, outcome, teams) {
   if (sport === 'Football') {
-    if (outcome === '1') return `${teams[0]} Win`;
-    if (outcome === 'X') return 'Draw';
-    if (outcome === '2') return `${teams[1]} Win`;
+    if (outcome === '1') return '1';
+    if (outcome === 'X') return 'X';
+    if (outcome === '2') return '2';
   }
-  if (outcome === '1') return `${teams[0]} Win`;
-  if (outcome === '2') return `${teams[1]} Win`;
+  if (outcome === '1') return '1';
+  if (outcome === '2') return '2';
   return outcome;
 }
 
+
 function renderCards() {
   const wrap = $$('#cards');
+  if (!wrap) return;
   wrap.innerHTML = '';
-  MATCHES.forEach(m => {
-    const odds = Object.entries(m.odds).map(([k, v]) => (
-      `<button class="odd-btn" data-match="${m.id}" data-outcome="${k}" data-odd="${v}">
-         <span class="lbl">${displayName(m.sport, k, m.teams)}</span>
-         <span class="val">${fmt(v)}</span>
-       </button>`
-    )).join('');
 
-    const card = document.createElement('article');
-    card.className = 'card';
-    card.innerHTML = `
-      <div class="match-head">
-        <span>${m.comp} • ${m.sport}</span>
-        <span>${m.time}</span>
-      </div>
-      <div class="teams">${m.teams[0]} vs ${m.teams[1]}</div>
-      <div class="market-row">${odds}</div>
-    `;
-    wrap.appendChild(card);
-  });
 
+
+
+  // Keep UI state after render
   updateOddSelections();
 }
 
 function updateOddSelections() {
-  $$$('.odd-btn').forEach(b => b.classList.remove('selected'));
+  $$$('.odd-btn').forEach(b => {
+    b.classList.remove('selected');
+    b.setAttribute('aria-pressed', 'false');
+  });
   slip.forEach(s => {
     const btn = $$(`.odd-btn[data-match="${s.matchId}"][data-outcome="${s.outcome}"]`);
-    if (btn) btn.classList.add('selected');
+    if (btn) {
+      btn.classList.add('selected');
+      btn.setAttribute('aria-pressed', 'true');
+    }
   });
 }
 
 function renderSlip() {
+  ensureSlipChrome(); // make sure UI exists
+
   const empty = $$('#slipEmpty');
   const list = $$('#slipList');
+  if (!list || !empty) return;
+
   list.innerHTML = '';
 
   if (!slip.length) {
@@ -105,6 +1053,11 @@ function renderSlip() {
     empty.setAttribute('hidden', 'true');
     list.removeAttribute('hidden');
     slip.forEach(item => {
+      const legStake = Number(item.stake ?? 0);
+      const legStakeInput = betMode === 'singles'
+        ? `<input class="input leg-stake" data-leg="${item.matchId}" type="number" min="0" step="1" value="${legStake || 0}" style="width:90px;margin-left:8px"/>`
+        : '';
+
       const el = document.createElement('div');
       el.className = 'slip-item';
       el.innerHTML = `
@@ -112,46 +1065,164 @@ function renderSlip() {
           <div class="teams">${item.teams[0]} vs ${item.teams[1]}</div>
           <div class="market">${item.market}</div>
         </div>
-        <div class="odds">${fmt(item.odd)}</div>
-        <button class="remove" aria-label="Remove" data-remove="${item.matchId}">×</button>
+        <div>
+          <span class="odds">${formatOddDisplay(item.odd)}</span>
+          ${legStakeInput}
+          <button class="remove" aria-label="Remove" data-remove="${item.matchId}">×</button>
+        </div>
       `;
       list.appendChild(el);
     });
+
+    if (betMode === 'singles') {
+      list.querySelectorAll('.leg-stake').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const id = inp.dataset.leg;
+          const it = slip.find(s => s.matchId === id);
+          if (it) {
+            it.stake = Math.max(0, Number(inp.value) || 0);
+            saveSlip();
+            updateTotals();
+            updateBetSlipVisibility();
+
+          }
+        });
+      });
+    }
   }
 
-  const stake = Number($$('#stake').value) || 0;
-  const total = slip.reduce((acc, b) => acc * Number(b.odd), 1) || 1;
-  $$('#totalOdds').textContent = fmt(total);
-  $$('#payout').textContent = fmt(stake * total);
-  $$('#place').disabled = !(slip.length && stake > 0);
+
+  // Hide/show global stake row
+  const globalStakeRow = document.querySelector('label[for="stake"]')?.closest('.row');
+  if (globalStakeRow) globalStakeRow.style.display = (betMode === 'combo') ? '' : 'none';
+
+  updateTotals();
+  updateBetSlipVisibility(); // <— add this line
+
+}
+
+function updateTotals() {
+  const stakeInput = $$('#stake');
+  const globalStake = Number(stakeInput?.value) || 0;
+  const totalDec = slip.reduce((acc, b) => acc * Number(b.odd || 1), 1) || 1;
+
+  let totalStake, payout;
+  if (betMode === 'combo') {
+    totalStake = globalStake;
+    payout = globalStake * totalDec;
+  } else {
+    totalStake = slip.reduce((a, b) => a + (Number(b.stake) || 0), 0);
+    payout = slip.reduce((a, b) => a + ((Number(b.stake) || 0) * Number(b.odd || 1)), 0);
+  }
+
+  $$('#totalOdds').textContent = formatOddDisplay(totalDec);
+  $$('#payout').textContent = fmtSafe(payout);
+
+  const canAfford = totalStake > 0 && totalStake <= wallet;
+  const placeBtn = $$('#place');
+  placeBtn.disabled = !(slip.length && canAfford);
+  placeBtn.title = canAfford ? '' : 'Insufficient funds';
 }
 
 // =========================
-// Interactions
+// Odds format (DEC / FRAC / US)
+// =========================
+
+
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+function toFrac(d) {
+  if (!Number.isFinite(d) || d <= 1) return '-';
+  const n = Math.round((d - 1) * 100), den = 100, g = gcd(n, den) || 1;
+  return `${n / g}/${den / g}`;
+}
+function toUS(d) {
+  if (!Number.isFinite(d) || d <= 1) return '-';
+  return d >= 2 ? `+${Math.round((d - 1) * 100)}` : `-${Math.round(100 / (d - 1))}`;
+}
+
+
+
+function formatOddDisplay(dec) {
+  if (oddsMode === 'dec') return fmtSafe(dec);
+  if (oddsMode === 'frac') return toFrac(dec);
+  return toUS(dec);
+}
+
+function repaintOdds() {
+  // cards
+  document.querySelectorAll('.odd-btn').forEach(btn => {
+    const v = Number(btn.dataset.odd);
+    const el = btn.querySelector('.val');
+    if (el && Number.isFinite(v)) el.textContent = formatOddDisplay(v);
+  });
+  // slip
+  document.querySelectorAll('.slip-item').forEach(it => {
+    const id = it.querySelector('[data-remove]')?.dataset.remove;
+    const s = id && slip.find(x => x.matchId === id);
+    const el = it.querySelector('.odds');
+    if (s && el) el.textContent = formatOddDisplay(s.odd);
+  });
+  // total
+  const totalDec = slip.reduce((a, b) => a * Number(b.odd || 1), 1) || 1;
+  const totEl = document.getElementById('totalOdds');
+  if (totEl) totEl.textContent = formatOddDisplay(totalDec);
+}
+
+// Odds format in settings dropdown
+const oddsDropdown = document.getElementById('oddsDropdown');
+if (oddsDropdown) {
+  oddsDropdown.value = oddsMode;
+  oddsDropdown.addEventListener('change', (e) => {
+    oddsMode = e.target.value;
+    localStorage.setItem(ODDS_FMT_KEY, oddsMode);
+    repaintOdds();
+  });
+}// Hook repaint after renders
+const _renderCards = renderCards;
+renderCards = function () { _renderCards(); repaintOdds(); };
+
+const _renderSlip = renderSlip;
+renderSlip = function () { _renderSlip(); repaintOdds(); };
+
+
+// =========================
+/* Interactions */
 // =========================
 document.addEventListener('click', (e) => {
+  // Handle odds buttons
   const oddBtn = e.target.closest('.odd-btn');
   if (oddBtn) {
+    if (oddBtn.disabled) return;
     const matchId = oddBtn.dataset.match;
     const outcome = oddBtn.dataset.outcome;
     const odd = Number(oddBtn.dataset.odd);
+    if (!Number.isFinite(odd)) return;
+
     const match = MATCHES.find(m => m.id === matchId);
     const market = displayName(match.sport, outcome, match.teams);
 
     const idx = slip.findIndex(b => b.matchId === matchId);
     if (idx > -1 && slip[idx].outcome === outcome) {
       slip.splice(idx, 1);
+      toast('Selection removed');
     } else if (idx > -1) {
       slip[idx] = { matchId, teams: match.teams, outcome, odd, market };
+      toast('Selection updated');
     } else {
       slip.push({ matchId, teams: match.teams, outcome, odd, market });
+      toast('Selection added');
     }
     saveSlip();
     updateOddSelections();
     renderSlip();
+    updateBetSlipTrigger(); // ← ADDED THIS
+    renderBetItems();          // ← Updates floating slip items
+    updateCollapsedBetSlip();  // ← Updates collapsed view
+    updatePotentialWin();
     return;
   }
 
+  // Handle remove buttons
   const removeBtn = e.target.closest('[data-remove]');
   if (removeBtn) {
     const id = removeBtn.dataset.remove;
@@ -159,54 +1230,164 @@ document.addEventListener('click', (e) => {
     saveSlip();
     updateOddSelections();
     renderSlip();
+    updateBetSlipTrigger(); // ← ADDED THIS
+    renderBetItems();
+    updateCollapsedBetSlip();
+    updatePotentialWin();
+    toast('Selection removed');
     return;
   }
 
+  // Handle modal close buttons
+  const closeAttr = e.target.getAttribute && e.target.getAttribute('data-close');
+  if (closeAttr) {
+    const el = document.getElementById(closeAttr);
+    closeAuth(el);
+    return;
+  }
+
+  // Close modals on background click
   if (e.target.id === 'mClose' || e.target.closest('#mClose') || e.target.id === 'modal') {
     closeModal();
+    return;
   }
+
+
 });
+// Stake input (persist)
+const stakeInput = $$('#stake');
+if (stakeInput) {
+  const savedStake = localStorage.getItem(STAKE_KEY);
+  if (savedStake !== null) stakeInput.value = savedStake;
+  stakeInput.addEventListener('input', () => {
+    localStorage.setItem(STAKE_KEY, stakeInput.value || '0');
+    renderSlip();
+  });
+}
 
-// Stake input
-$$('#stake').addEventListener('input', renderSlip);
-
-// Place bet (modal)
-$$('#place').addEventListener('click', () => {
+// Place bet (modal) — supports combo & singles, deducts from wallet
+$$('#place')?.addEventListener('click', () => {
   if (!slip.length) return;
-  const stake = Number($$('#stake').value) || 0;
-  if (stake <= 0) return;
 
-  const total = slip.reduce((acc, b) => acc * Number(b.odd), 1) || 1;
-  const list = slip.map(b => `<li>${b.teams[0]} vs ${b.teams[1]} — <strong>${b.market}</strong> @ ${fmt(b.odd)}</li>`).join('');
+  const globalStake = Number($$('#stake').value) || 0;
+  const totalDec = slip.reduce((acc, b) => acc * Number(b.odd || 1), 1) || 1;
+
+  let requiredStake, payout, ticketHtml;
+  if (betMode === 'combo') {
+    requiredStake = globalStake;
+    payout = globalStake * totalDec;
+    ticketHtml = slip.map(b => `<li>${b.teams[0]} vs ${b.teams[1]} — <strong>${b.market}</strong> @ ${fmtSafe(b.odd)}</li>`).join('');
+  } else {
+    requiredStake = slip.reduce((a, b) => a + (Number(b.stake) || 0), 0);
+    payout = slip.reduce((a, b) => a + ((Number(b.stake) || 0) * Number(b.odd || 1)), 0);
+    ticketHtml = slip.map(b => {
+      const s = Number(b.stake) || 0;
+      return `<li>${b.teams[0]} vs ${b.teams[1]} — <strong>${b.market}</strong> @ ${fmtSafe(b.odd)} • Stake ${fmtSafe(s)} • Returns ${fmtSafe(s * Number(b.odd || 1))}</li>`;
+    }).join('');
+  }
+
+  if (requiredStake <= 0) return;
+  if (requiredStake > wallet) { toast('Insufficient funds'); return; }
+
+  setWallet(wallet - requiredStake);
+
   showModal('Bet Confirmation', `
-    <p>Stake: <strong>${fmt(stake)}</strong></p>
-    <p>Total Odds: <strong>${fmt(total)}</strong></p>
-    <p>Potential Payout: <strong>${fmt(stake * total)}</strong></p>
-    <ul>${list}</ul>
+    <p>Mode: <strong>${betMode === 'combo' ? 'Combo' : 'Singles'}</strong></p>
+    <p>Total Stake: <strong>${fmtSafe(requiredStake)}</strong></p>
+    <p>Total Odds (dec): <strong>${fmtSafe(totalDec)}</strong></p>
+    <p>Potential Payout: <strong>${fmtSafe(payout)}</strong></p>
+    <ul>${ticketHtml}</ul>
   `);
-  // To clear the slip after placing, uncomment:
+  toast('Bet placed');
+
+  // Save bet to My Bets
+  const newBet = {
+    id: Date.now(),
+    type: betMode,
+    selections: slip.map(s => ({
+      match: `${s.teams[0]} vs ${s.teams[1]}`,
+      market: s.market,
+      odds: s.odd
+    })),
+    stake: requiredStake,
+    totalOdds: totalDec,
+    potentialWin: payout,
+    status: 'unsettled',
+    timestamp: new Date().toISOString()
+  };
+
+  userBets.push(newBet);
+  localStorage.setItem('userBets', JSON.stringify(userBets));
+  // Optionally clear slip after placing
   // slip = []; saveSlip(); updateOddSelections(); renderSlip();
 });
 
-// Theme toggle (kept as-is)
-const themeBtn = $$('#themeToggle');
-const THEME_KEY = 'mbets-theme';
-const savedTheme = localStorage.getItem(THEME_KEY);
-if (savedTheme === 'light') document.documentElement.style.filter = 'invert(1) hue-rotate(180deg)';
-themeBtn.addEventListener('click', () => {
-  const inverted = document.documentElement.style.filter.includes('invert');
-  if (inverted) {
-    document.documentElement.style.filter = '';
-    themeBtn.innerHTML = '<svg width="18" height="18"><use href="#icon-moon"/></svg>';
-    localStorage.setItem(THEME_KEY, 'light'); // (note: this saves the inverse)
-  } else {
-    document.documentElement.style.filter = 'invert(1) hue-rotate(180deg)';
-    themeBtn.innerHTML = '<svg width="18" height="18"><use href="#icon-sun"/></svg>';
-    localStorage.setItem(THEME_KEY, 'dark');  // (note: this saves the inverse)
-  }
-});
 
+// =========================
+// Theme toggle using body.dark-mode
+// =========================
+
+function applyTheme(mode) {
+  // Remove both classes first
+  document.body.classList.remove('dark-mode', 'light-mode');
+
+  // Add the correct class
+  if (mode === 'light') {
+    document.body.classList.add('light-mode');
+  } else {
+    document.body.classList.add('dark-mode');
+  }
+
+  // Update theme text in UI
+  const themeText = document.getElementById('themeText');
+  if (themeText) {
+    themeText.textContent = mode === 'dark' ? 'Dark' : 'Light';
+  }
+
+  localStorage.setItem(THEME_KEY, mode);
+}
+
+// Load saved theme or default to dark
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+// Theme toggle button click
+document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+  const currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+});
+// =========================
+// Dock Theme Toggle to Left (next to logo)
+// =========================
+(() => {
+  const actions = document.querySelector('.header-actions');
+  const theme = document.getElementById('themeToggle');
+  if (!actions || !theme) return;
+
+  // Try to place the toggle right after a brand/logo element if present
+  const brand = document.querySelector(
+    '.brand, .logo, .site-logo, .site-title, .header-title, header h1, .header h1'
+  );
+
+  if (brand && brand.parentElement) {
+    // Put the toggle immediately after the brand
+    brand.insertAdjacentElement('afterend', theme);
+    theme.classList.add('left-docked');
+  } else {
+    // Fallback: pin the toggle to the left edge of the same bar that holds .header-actions
+    const bar = actions.parentElement;
+    if (bar) {
+      // Ensure the bar can anchor absolutely positioned children
+      if (getComputedStyle(bar).position === 'static') bar.style.position = 'relative';
+      bar.prepend(theme);
+      theme.classList.add('left-docked-abs');
+    }
+  }
+})();
+
+// =========================
 // Modal helpers
+// =========================
 function showModal(title, html) {
   $$('#mTitle').textContent = title;
   $$('#mBody').innerHTML = html;
@@ -218,105 +1399,11 @@ function closeModal() {
   $$('#modal').setAttribute('aria-hidden', 'true');
 }
 
-// --- DOB limits: 18+ only ---
-(() => {
-  const dob = document.getElementById('suDob');
-  if (!dob) return;
-  const today = new Date();
-  const max = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
-  dob.max = max;
-  dob.min = '1900-01-01';
-})();
 
-// ==== RECENT BETS — build panel, record on Place Bet (document-capture), render list ====
-(function recentBetsInit() {
-  const KEY = 'mbets-placed-v1';
-  const fmt2 = (n) => Number(n).toFixed(2);
 
-  // Build panel under TRENDING
-  const sidebar = document.querySelector('.sidebar');
-  if (!sidebar) { console.warn('[Recent] .sidebar not found'); return; }
-  const anchor = document.getElementById('trendingList')?.parentElement || sidebar;
-  let panel = document.getElementById('recentPanel');
-  if (!panel) {
-    panel = document.createElement('section');
-    panel.id = 'recentPanel';
-    panel.style.marginTop = '18px';
-    panel.innerHTML = `
-      <div class="side-sub">RECENT BETS</div>
-      <ul id="recentList" class="side-list" style="margin-top:6px;"></ul>
-      <button id="clearRecent" class="btn btn-login" style="width:100%;margin-top:8px;padding:8px 10px;">
-        Clear
-      </button>
-    `;
-    anchor.appendChild(panel);
-  }
-
-  const listEl  = panel.querySelector('#recentList');
-  const clearEl = panel.querySelector('#clearRecent');
-
-  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
-  const save = (arr) => localStorage.setItem(KEY, JSON.stringify(arr.slice(-5))); // keep last 5
-
-  function renderRecent() {
-    const arr = load();
-    if (!arr.length) {
-      listEl.innerHTML = `<li class="side-item muted">No bets placed yet.</li>`;
-      return;
-    }
-    listEl.innerHTML = arr.slice().reverse().map(p => `
-      <li class="side-item" style="align-items:flex-start;">
-        <div style="display:flex;flex-direction:column;gap:2px;width:100%;">
-          <div style="display:flex;justify-content:space-between;width:100%;">
-            <strong>${p.time}</strong>
-            <span class="pill" style="border-color:var(--divider);">${fmt2(p.total)}</span>
-          </div>
-          <div class="muted" style="font-size:12px;">
-            ${p.count} sel • Stake ${fmt2(p.stake)} • Payout ${fmt2(p.payout)}
-          </div>
-        </div>
-      </li>
-    `).join('');
-  }
-  window.renderRecent = renderRecent;
-
-  clearEl.addEventListener('click', () => { localStorage.removeItem(KEY); renderRecent(); });
-
-  // Record on Place Bet (document-capture so no other listener can block it)
-  document.addEventListener('click', (ev) => {
-    const isPlace = ev.target.closest('#place');
-    if (!isPlace) return;
-
-    const stake = Number(document.getElementById('stake').value) || 0;
-    if (!window.slip?.length || stake <= 0) return;
-
-    const total  = window.slip.reduce((a, b) => a * Number(b.odd), 1) || 1;
-    const payout = stake * total;
-    const when   = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const data  = load();
-    const rec   = { time: when, count: window.slip.length, stake, total, payout };
-
-    const last = data[data.length - 1];
-    const same = last
-      && last.count === rec.count
-      && fmt2(last.stake)  === fmt2(rec.stake)
-      && fmt2(last.total)  === fmt2(rec.total)
-      && fmt2(last.payout) === fmt2(rec.payout);
-
-    if (!same) {
-      data.push(rec);
-      save(data);
-      renderRecent();
-      console.log('[Recent] recorded', rec);
-    }
-  }, true);
-
-  renderRecent();
-  console.log('[Recent] ready');
-})();
-
-// ===== Auth Modals and Nav toggle =====
+// =========================
+// Auth Modals and Nav toggle
+// =========================
 const navToggleBtn = $$('#navToggle');
 const navBackdrop = $$('#navBackdrop');
 if (navToggleBtn && navBackdrop) {
@@ -330,115 +1417,654 @@ if (navToggleBtn && navBackdrop) {
   });
 }
 
-const openLoginBtn = $$('#openLogin');
-const openSignupBtn = $$('#openSignup');
-const loginModal = $$('#loginModal');
-const signupModal = $$('#signupModal');
-
-function openAuth(el){ if (el){ el.classList.add('open'); el.setAttribute('aria-hidden','false'); } }
-function closeAuth(el){ if (el){ el.classList.remove('open'); el.setAttribute('aria-hidden','true'); } }
-
-openLoginBtn && openLoginBtn.addEventListener('click', ()=> openAuth(loginModal));
-openSignupBtn && openSignupBtn.addEventListener('click', ()=> openAuth(signupModal));
-
-document.addEventListener('click', (e) => {
-  const closeAttr = e.target.getAttribute && e.target.getAttribute('data-close');
-  if (closeAttr){
-    const el = document.getElementById(closeAttr);
-    closeAuth(el);
+// ✅ DEFINE FUNCTIONS OUTSIDE DOMContentLoaded SO THEY'RE GLOBALLY ACCESSIBLE
+function openAuth(el) {
+  if (el) {
+    el.classList.add('open');
+    el.setAttribute('aria-hidden', 'false');
   }
-  if (e.target === loginModal) closeAuth(loginModal);
-  if (e.target === signupModal) closeAuth(signupModal);
-});
-
-// Remember email support
-const remembered = localStorage.getItem('rememberEmail') || '';
-const loginEmail = $$('#loginEmail'); const suEmail = $$('#suEmail');
-if (remembered) { if (loginEmail) loginEmail.value = remembered; if (suEmail) suEmail.value = remembered; }
-
-// Login submit
-const loginFormEl = $$('#loginForm');
-loginFormEl && loginFormEl.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const email = $$('#loginEmail').value.trim();
-  const pwd = $$('#loginPassword').value;
-  const remember = $$('#loginRemember').checked;
-  if (!email || !email.includes('@') || pwd.length < 6) {
-    showModal('Login Error', '<p>Please enter a valid email and a password with at least 6 characters.</p>');
-    return;
-  }
-  if (remember) localStorage.setItem('rememberEmail', email);
-
-  closeAuth(loginModal);
-  showModal('Logged In', `<p>Welcome back, <strong>${email}</strong>.</p>`);
-});
-
-// Sign up submit (with validation + DOB 18+)
-const signupFormEl = $$('#signupForm');
-
-function calcAge(isoDateStr) {
-  const d = new Date(isoDateStr);
-  if (isNaN(d)) return NaN;
-  const t = new Date();
-  let age = t.getFullYear() - d.getFullYear();
-  const m = t.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--;
-  return age;
 }
 
-signupFormEl && signupFormEl.addEventListener('submit', (e) => {
-  e.preventDefault();
+function closeAuth(el) {
+  if (el) {
+    el.classList.remove('open');
+    el.setAttribute('aria-hidden', 'true');
+  }
+}
 
-  const first   = ($$('#suFirst')?.value || '').trim();
-  const last    = ($$('#suLast')?.value  || '').trim();
-  const dobStr  = ($$('#suDob')?.value   || '').trim();
-  const email   = ($$('#suEmail')?.value || '').trim();
-  const pwd     = ($$('#suPassword')?.value || '');
-  const confirm = ($$('#suConfirm')?.value  || '');
-  const remember= !!($$('#suRemember')?.checked);
-  const terms   = !!($$('#suTerms')?.checked);
+// ✅ WRAP ONLY THE EVENT LISTENERS IN DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  const openLoginBtn = $$('#openLogin');
+  const openSignupBtn = $$('#openSignup');
+  const loginModal = $$('#loginModal');
+  const signupModal = $$('#signupModal');
 
-  const errors = [];
-  const nameRe = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$/;
-  if (!nameRe.test(first)) errors.push('First name must be at least 2 letters.');
-  if (!nameRe.test(last))  errors.push('Last name must be at least 2 letters.');
-
-  if (!dobStr) {
-    errors.push('Birth date is required.');
-  } else {
-    const age = calcAge(dobStr);
-    if (isNaN(age)) errors.push('Invalid birth date.');
-    else if (age < 18) errors.push('You must be at least 18 years old.');
+  // Add click listeners only if elements exist
+  if (openLoginBtn && loginModal) {
+    openLoginBtn.addEventListener('click', () => openAuth(loginModal));
   }
 
-  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRe.test(email)) errors.push('Enter a valid email address.');
+  if (openSignupBtn && signupModal) {
+    openSignupBtn.addEventListener('click', () => openAuth(signupModal));
+  }
 
-  if (pwd.length < 8) errors.push('Password must be at least 8 characters.');
-  if (pwd !== confirm) errors.push('Passwords do not match.');
+  // Handle close buttons
+  document.querySelectorAll('.close-x').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modalId = btn.getAttribute('data-close');
+      if (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) closeAuth(modal);
+      }
+    });
+  });
 
-  if (!terms) errors.push('You must accept the Terms & Conditions.');
+  // Click outside modal to close
+  window.addEventListener('click', (e) => {
+    if (e.target === loginModal) closeAuth(loginModal);
+    if (e.target === signupModal) closeAuth(signupModal);
+  });
+});
 
-  if (errors.length) {
-    showModal('Sign Up Error', `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`);
+
+
+// Block Social and Ask AI when logged out - SHORT VERSION
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href="#social"], a[href="#ask_ai"]');
+  if (!link) return;
+
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  if (!isLoggedIn) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    toast('Please log in to access this feature');
+    setTimeout(() => document.getElementById('openLogin')?.click(), 100);
+  }
+}, true); // ← 'true' makes it capture phase (runs first)
+
+
+
+
+
+// Live Events Functionality
+document.addEventListener('DOMContentLoaded', function () {
+  // Sport tabs functionality
+  const sportTabs = document.querySelectorAll('.sport-tab');
+
+  sportTabs.forEach(tab => {
+    tab.addEventListener('click', function () {
+      // Remove active class from all tabs
+      sportTabs.forEach(t => t.classList.remove('active'));
+      // Add active class to clicked tab
+      this.classList.add('active');
+
+      const sport = this.dataset.sport;
+      filterMatchesBySport(sport);
+    });
+  });
+
+  // Market tab switching for live events
+  document.querySelectorAll('.market-tab').forEach(tab => {
+    tab.addEventListener('click', function () {
+      const market = this.dataset.market;
+      const card = this.closest('.live-match-card');
+
+      // Update active tab
+      card.querySelectorAll('.market-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+
+      // Update visible odds
+      card.querySelectorAll('.odds-set').forEach(set => {
+        set.classList.toggle('active', set.dataset.odds === market);
+      });
+    });
+  });
+
+  // Odds buttons functionality
+  const oddsButtons = document.querySelectorAll('.live-events-section .odd-btn');
+
+  oddsButtons.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const outcome = this.dataset.outcome;
+      const oddValue = this.dataset.odd; // Changed from querySelector
+
+      // Add to bet slip
+      const card = this.closest('.live-match-card');
+      const teamRows = card.querySelectorAll('.team-row');
+      const teamHome = teamRows[0]?.querySelector('.team-name')?.textContent || 'Team 1';
+      const teamAway = teamRows[1]?.querySelector('.team-name')?.textContent || 'Team 2';
+
+      // Use your existing slip system
+      const matchId = 'live-' + Date.now();
+      const odd = parseFloat(oddValue);
+
+      slip.push({
+        matchId,
+        teams: [teamHome, teamAway],
+        outcome,
+        odd,
+        market: outcome,
+        isLive: true
+      });
+
+      saveSlip();
+      updateOddSelections();
+      renderSlip();
+      updateBetSlipTrigger();
+      toast('Live bet added');
+
+      // Visual feedback
+      this.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        this.style.transform = '';
+      }, 150);
+    });
+  });
+
+  // Favorite buttons functionality
+  const favoriteButtons = document.querySelectorAll('.live-events-section .favorite-btn');
+
+  favoriteButtons.forEach(btn => {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      this.classList.toggle('favorited');
+
+      if (this.classList.contains('favorited')) {
+        this.style.color = '#f59e0b';
+        this.textContent = '⭐';
+      } else {
+        this.style.color = '';
+        this.textContent = '⭐';
+      }
+    });
+  });
+
+  // Auto-update live times
+  setInterval(updateLiveTimes, 1000);
+}); // ← THIS closes DOMContentLoaded
+
+// Filter matches by sport
+function filterMatchesBySport(sport) {
+  const leagueSections = document.querySelectorAll('.league-section');
+
+  if (sport === 'highlights') {
+    leagueSections.forEach(section => section.style.display = 'block');
     return;
   }
 
-  if (remember) localStorage.setItem('rememberEmail', email);
-  else localStorage.removeItem('rememberEmail');
+  // For now, show all matches (you can implement actual filtering based on sport)
+  leagueSections.forEach(section => {
+    section.style.display = 'block';
+  });
 
-  closeAuth($$('#signupModal'));
-  showModal(
-    'Account Created',
-    `<p>Welcome, <strong>${first} ${last}</strong>. Your account for <strong>${email}</strong> is set.</p>`
-  );
+  console.log('Filtering matches for sport:', sport);
+}
+
+// Update live match times
+function updateLiveTimes() {
+  const liveTimes = document.querySelectorAll('.live-time');
+
+  liveTimes.forEach(timeEl => {
+    const currentTime = timeEl.textContent;
+    const [minutes, seconds] = currentTime.split(':').map(num => parseInt(num));
+
+    let newSeconds = seconds + 1;
+    let newMinutes = minutes;
+
+    if (newSeconds >= 60) {
+      newSeconds = 0;
+      newMinutes += 1;
+    }
+
+    // Don't go beyond 90 minutes for demo
+    if (newMinutes < 90) {
+      timeEl.textContent = `${newMinutes}:${newSeconds.toString().padStart(2, '0')}`;
+    }
+  });
+}
+
+// Add to bet slip function (integrate with your existing bet slip system)
+function addToBetSlip(bet) {
+  console.log('Adding live bet to slip:', bet);
+
+  // If you have an existing addToBetSlip function, call it here
+  // Otherwise, implement the logic to add the bet to your bet slip
+
+  // Show notification
+  showNotification(`Added ${bet.teamHome} vs ${bet.teamAway} (${bet.outcome}: ${bet.odds}) to bet slip`);
+}
+
+// Notification function
+function showNotification(message) {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--accent-color);
+    color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    z-index: 10000;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  `;
+
+  document.body.appendChild(notification);
+
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Multi-step form logic
+const signupForm = document.getElementById('signupForm');
+const formSteps = document.querySelectorAll('.form-step');
+const progressSteps = document.querySelectorAll('.progress-step');
+let currentStep = 1;
+
+// Validation patterns
+const patterns = {
+  name: /^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,30}$/,
+  email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  username: /^[a-zA-Z0-9]{3,20}$/,
+  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+};
+
+// Show specific step
+function showStep(step) {
+  // Update form steps
+  formSteps.forEach(s => {
+    s.classList.toggle('active', s.dataset.step == step);
+  });
+
+  // Update progress indicator
+  progressSteps.forEach((s, index) => {
+    const stepNum = index + 1;
+    s.classList.toggle('active', stepNum === step);
+    s.classList.toggle('completed', stepNum < step);
+  });
+
+  currentStep = step;
+}
+
+// Validate field
+function validateField(field, pattern, errorMsg) {
+  const value = field.value.trim();
+  const errorEl = document.getElementById(field.id.replace('su', '') + 'Error');
+
+  if (!value) {
+    showError(errorEl, 'This field is required');
+    field.classList.add('error');
+    return false;
+  }
+
+  if (pattern && !pattern.test(value)) {
+    showError(errorEl, errorMsg);
+    field.classList.add('error');
+    return false;
+  }
+
+  hideError(errorEl);
+  field.classList.remove('error');
+  return true;
+}
+
+// Show/hide errors
+function showError(el, msg) {
+  if (el) {
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+}
+
+function hideError(el) {
+  if (el) {
+    el.textContent = '';
+    el.classList.remove('show');
+  }
+}
+
+// Validate age (18+)
+function validateAge(dateStr) {
+  const dob = new Date(dateStr);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age >= 18;
+}
+
+// Step 1 validation
+function validateStep1() {
+  const firstName = document.getElementById('suFirst');
+  const lastName = document.getElementById('suLast');
+  const dob = document.getElementById('suDob');
+  const country = document.getElementById('suCountry');
+
+  let valid = true;
+
+  // In validateStep1() function, ADD this before the return statement:
+
+  // Validate gender
+  const gender = document.getElementById('suGender');
+  const genderError = document.getElementById('genderError');
+  if (!gender.value) {
+    showError(genderError, 'Please select your gender');
+    gender.classList.add('error');
+    valid = false;
+  } else {
+    hideError(genderError);
+    gender.classList.remove('error');
+  }
+  // Validate first name
+  if (!validateField(firstName, patterns.name, 'Please enter a valid first name')) {
+    valid = false;
+  }
+
+  // Validate last name
+  if (!validateField(lastName, patterns.name, 'Please enter a valid last name')) {
+    valid = false;
+  }
+
+  // Validate date of birth
+  const dobError = document.getElementById('dobError');
+  if (!dob.value) {
+    showError(dobError, 'Date of birth is required');
+    dob.classList.add('error');
+    valid = false;
+  } else if (!validateAge(dob.value)) {
+    showError(dobError, 'You must be 18 or older to register');
+    dob.classList.add('error');
+    valid = false;
+  } else {
+    hideError(dobError);
+    dob.classList.remove('error');
+  }
+
+  // Validate country
+  const countryError = document.getElementById('countryError');
+  if (!country.value) {
+    showError(countryError, 'Please select your country');
+    country.classList.add('error');
+    valid = false;
+  } else {
+    hideError(countryError);
+    country.classList.remove('error');
+  }
+
+  return valid;
+}
+
+// Step 2 validation
+function validateStep2() {
+  const email = document.getElementById('suEmail');
+  const username = document.getElementById('suUsername');
+  const password = document.getElementById('suPassword');
+  const confirm = document.getElementById('suConfirm');
+
+  let valid = true;
+
+  // Validate email
+  if (!validateField(email, patterns.email, 'Please enter a valid email address')) {
+    valid = false;
+  }
+
+  // Validate username
+  if (!validateField(username, patterns.username, 'Username must be 3-20 characters, letters and numbers only')) {
+    valid = false;
+  }
+
+  // Validate password
+  if (!validateField(password, patterns.password, 'Password must be at least 8 characters with uppercase, lowercase and numbers')) {
+    valid = false;
+  }
+
+  // Validate password confirmation
+  const confirmError = document.getElementById('confirmError');
+  if (confirm.value !== password.value) {
+    showError(confirmError, 'Passwords do not match');
+    confirm.classList.add('error');
+    valid = false;
+  } else if (!confirm.value) {
+    showError(confirmError, 'Please confirm your password');
+    confirm.classList.add('error');
+    valid = false;
+  } else {
+    hideError(confirmError);
+    confirm.classList.remove('error');
+  }
+
+  return valid;
+}
+
+// Step 3 validation
+function validateStep3() {
+  const terms = document.getElementById('suTerms');
+  const termsError = document.getElementById('termsError');
+
+  if (!terms.checked) {
+    showError(termsError, 'You must accept the Terms & Conditions');
+    return false;
+  }
+
+  hideError(termsError);
+  return true;
+}
+
+// Password strength checker
+const passwordInput = document.getElementById('suPassword');
+const strengthBar = document.getElementById('strengthBar');
+
+if (passwordInput) {
+  passwordInput.addEventListener('input', () => {
+    const value = passwordInput.value;
+    let strength = 0;
+
+    if (value.length >= 8) strength++;
+    if (value.length >= 12) strength++;
+    if (/[a-z]/.test(value) && /[A-Z]/.test(value)) strength++;
+    if (/\d/.test(value)) strength++;
+    if (/[!@#$%^&*]/.test(value)) strength++;
+
+    strengthBar.className = 'strength-bar';
+    if (strength <= 2) {
+      strengthBar.classList.add('weak');
+    } else if (strength <= 3) {
+      strengthBar.classList.add('medium');
+    } else {
+      strengthBar.classList.add('strong');
+    }
+  });
+}
+
+// Password toggle visibility
+document.querySelectorAll('.password-toggle').forEach(toggle => {
+  toggle.addEventListener('click', () => {
+    const targetId = toggle.dataset.target;
+    const input = document.getElementById(targetId);
+
+    if (input.type === 'password') {
+      input.type = 'text';
+      toggle.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      `;
+    } else {
+      input.type = 'password';
+      toggle.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      `;
+    }
+  });
 });
 
-// Forgot password + Social demo handlers (hooks up to your existing HTML)
-(() => {
-  const form = document.querySelector('#loginForm');
-  if (!form) return;
+// Next button handlers
+document.querySelectorAll('.btn-next').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const nextStep = parseInt(btn.dataset.next);
+    let isValid = false;
 
+    if (currentStep === 1) {
+      isValid = validateStep1();
+    } else if (currentStep === 2) {
+      isValid = validateStep2();
+    }
+
+    if (isValid) {
+      showStep(nextStep);
+    }
+  });
+});
+
+// Back button handlers
+document.querySelectorAll('.btn-back').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const prevStep = parseInt(btn.dataset.prev);
+    showStep(prevStep);
+  });
+});
+
+// Form submission
+if (signupForm) {
+  signupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    if (!validateStep3()) {
+      return;
+    }
+
+    // Collect form data
+    const formData = {
+      firstName: document.getElementById('suFirst').value.trim(),
+      lastName: document.getElementById('suLast').value.trim(),
+      dob: document.getElementById('suDob').value,
+      country: document.getElementById('suCountry').value,
+      gender: document.getElementById('suGender').value,
+      email: document.getElementById('suEmail').value.trim(),
+      username: document.getElementById('suUsername').value.trim(),
+      password: document.getElementById('suPassword').value,
+      promoCode: document.getElementById('suPromo').value.trim(),
+      acceptTerms: document.getElementById('suTerms').checked,
+      marketing: document.getElementById('suMarketing').checked,
+      rememberMe: document.getElementById('suRemember').checked
+    };
+
+    // ✅ SAVE TO DEMO ACCOUNTS (MAX 5)
+    let savedAccounts = JSON.parse(localStorage.getItem('demoAccounts')) || [];
+
+    // Check if account already exists
+    const existingAccount = savedAccounts.find(acc => acc.email === formData.email);
+
+    if (existingAccount) {
+      showAuthMessage('This email is already registered!', 3000);
+      return;
+    }
+
+    // Add new account (max 5)
+    if (savedAccounts.length >= 5) {
+      savedAccounts.shift(); // Remove oldest account
+    }
+
+    // ✅ NEW CODE - Saves balance too
+    savedAccounts.push({
+      email: formData.email,
+      password: formData.password,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      gender: formData.gender,
+      username: formData.username,
+      balance: 100.00,        // ✅ ADDED
+      withdrawable: 0.00,     // ✅ ADDED
+      credits: 100.00         // ✅ ADDED
+    });
+
+    // Save to localStorage
+    localStorage.setItem('demoAccounts', JSON.stringify(savedAccounts));
+
+    // Create current user session
+    const newUser = {
+      username: formData.username,
+      fullName: `${formData.firstName} ${formData.lastName}`,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      gender: formData.gender,
+      email: formData.email,
+      balance: 100.00, // Welcome bonus
+      withdrawable: 0.00,
+      credits: 100.00
+    };
+
+    localStorage.setItem("currentUser", JSON.stringify(newUser));
+    localStorage.setItem("isLoggedIn", "true");
+    document.body.classList.add('user-logged-in');
+
+    if (formData.rememberMe) {
+      localStorage.setItem('rememberEmail', formData.email);
+    }
+
+    // Close modal and update UI
+    closeAuth(document.getElementById('signupModal'));
+    updateUIAfterAuth(true);
+
+    // Show success message with title
+    const title = formData.gender === 'female' ? 'Ms.' : 'Mr.';
+    showAuthMessage(`Welcome ${title} ${formData.firstName} ${formData.lastName}! 🎉 You've received a €100 welcome bonus!`, 3000);
+
+    // Reset form
+    signupForm.reset();
+    showStep(1);
+  });
+}
+
+// Social sign-up handlers
+document.getElementById('googleSignup')?.addEventListener('click', () => {
+  // Simulate Google OAuth
+  showAuthMessage('Google sign-up coming soon!', 2000);
+});
+
+document.getElementById('facebookSignup')?.addEventListener('click', () => {
+  // Simulate Facebook OAuth
+  showAuthMessage('Facebook sign-up coming soon!', 2000);
+});
+
+// Set date max for age restriction
+const dobInput = document.getElementById('suDob');
+if (dobInput) {
+  const today = new Date();
+  const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  dobInput.max = maxDate.toISOString().slice(0, 10);
+  dobInput.min = '1900-01-01';
+}
+
+// Real-time validation on blur
+document.getElementById('suFirst')?.addEventListener('blur', () => {
+  validateField(document.getElementById('suFirst'), patterns.name, 'Please enter a valid first name');
+});
+
+document.getElementById('suLast')?.addEventListener('blur', () => {
+  validateField(document.getElementById('suLast'), patterns.name, 'Please enter a valid last name');
+});
+
+document.getElementById('suEmail')?.addEventListener('blur', () => {
+  validateField(document.getElementById('suEmail'), patterns.email, 'Please enter a valid email address');
+});
+
+document.getElementById('suUsername')?.addEventListener('blur', () => {
+  validateField(document.getElementById('suUsername'), patterns.username, 'Username must be 3-20 characters, letters and numbers only');
+});
+// Forgot password + Social demo handlers
+(() => {
   const forgot = document.querySelector('#forgotLink');
   forgot?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -471,163 +2097,1959 @@ signupFormEl && signupFormEl.addEventListener('submit', (e) => {
   document.getElementById('gLogin')?.addEventListener('click', () => demo('Google'));
 })();
 
-/* ==== RECENT BETS (left sidebar) ==== */
-(() => {
-  const KEY = 'mbets-placed-v1';
-  const fmt2 = (n) => Number(n).toFixed(2);
+// Main Search Bar Functionality (under header)
+const mainSearchInput = document.getElementById('mainSearchInput');
+const searchBtnInline = document.querySelector('.search-btn-inline');
 
-  const sidebar = document.querySelector('.sidebar');
-  if (!sidebar) return;
+// Create results dropdown
+const resultsDropdown = document.createElement('div');
+resultsDropdown.className = 'search-results-dropdown';
+resultsDropdown.style.cssText = `
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #1e293b;
+  border: 2px solid #ffd34d;
+  border-radius: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: none;
+  z-index: 100;
+`;
 
-  // Build the panel ONCE and place it right after the trending list
-  let panel = document.getElementById('recentPanel');
-  if (!panel) {
-    panel = document.createElement('section');
-    panel.id = 'recentPanel';
-    panel.style.marginTop = '18px';
-    panel.innerHTML = `
-      <div class="side-sub">RECENT BETS</div>
-      <ul id="recentList" class="side-list" style="margin-top:6px;"></ul>
-      <button id="clearRecent" class="btn btn-login" style="width:100%;margin-top:8px;padding:8px 10px;">Clear</button>
-    `;
-    const trendingUl = document.getElementById('trendingList');
-    if (trendingUl) {
-      // insert AFTER the UL (not inside it)
-      trendingUl.insertAdjacentElement('afterend', panel);
+document.querySelector('.search-container')?.appendChild(resultsDropdown);
+
+// Search on input
+if (mainSearchInput) {
+  mainSearchInput.addEventListener('input', () => {
+    const term = mainSearchInput.value.trim().toLowerCase();
+
+    if (!term) {
+      resultsDropdown.style.display = 'none';
+      return;
+    }
+
+    const results = MATCHES.filter(m =>
+      m.teams.some(t => t.toLowerCase().includes(term)) ||
+      m.sport.toLowerCase().includes(term) ||
+      m.comp.toLowerCase().includes(term)
+    );
+
+    if (results.length === 0) {
+      resultsDropdown.innerHTML = '<div class="search-result-item">No results found</div>';
+      resultsDropdown.style.display = 'block';
+      return;
+    }
+
+    resultsDropdown.innerHTML = results.map(m => `
+      <div class="search-result-item" data-id="${m.id}">
+        <div class="result-meta">${m.comp} • ${m.sport}</div>
+        <div class="result-match"><strong>${m.teams[0]} vs ${m.teams[1]}</strong></div>
+        <div class="result-meta">${m.time}</div>
+      </div>
+    `).join('');
+
+    resultsDropdown.style.display = 'block';
+  });
+
+  // Search on button click
+  searchBtnInline?.addEventListener('click', () => {
+    if (mainSearchInput.value.trim()) {
+      resultsDropdown.style.display = resultsDropdown.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  // Search on Enter
+  mainSearchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      const firstResult = resultsDropdown.querySelector('.search-result-item[data-id]');
+      if (firstResult) {
+        firstResult.click();
+      }
+    }
+  });
+}
+
+// Click on result
+resultsDropdown.addEventListener('click', (e) => {
+  const item = e.target.closest('.search-result-item');
+  if (!item || !item.dataset.id) return;
+
+  const matchId = item.dataset.id;
+  const matchCard = document.querySelector(`[data-id="${matchId}"]`);
+
+  if (matchCard) {
+    matchCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    matchCard.classList.add('highlight-match');
+    setTimeout(() => matchCard.classList.remove('highlight-match'), 2000);
+  }
+
+  resultsDropdown.style.display = 'none';
+  mainSearchInput.value = '';
+});
+
+// Close on click outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-container')) {
+    resultsDropdown.style.display = 'none';
+  }
+});
+
+// Close on ESC
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    resultsDropdown.style.display = 'none';
+  }
+});
+
+// AI Search - Uses same MATCHES data as main search
+const aiEventSearch = document.getElementById('aiEventSearch');
+const aiSearchResults = document.getElementById('aiSearchResults');
+const selectedEventDisplay = document.getElementById('selectedEventDisplay');
+const getPredictionBtn = document.getElementById('getPredictionBtn');
+const aiPredictionResults = document.getElementById('aiPredictionResults');
+
+let selectedEvent = null;
+
+// AI Search functionality
+if (aiEventSearch) {
+  aiEventSearch.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.trim().toLowerCase();
+
+    if (searchTerm.length < 2) {
+      aiSearchResults.classList.add('hidden');
+      return;
+    }
+
+    // Use same MATCHES data as main search
+    const results = MATCHES.filter(m =>
+      m.teams.some(t => t.toLowerCase().includes(searchTerm)) ||
+      m.sport.toLowerCase().includes(searchTerm) ||
+      m.comp.toLowerCase().includes(searchTerm)
+    );
+
+    if (results.length > 0) {
+      aiSearchResults.innerHTML = results.map(match => `
+        <div class="search-result-item" data-event-id="${match.id}">
+          <div style="font-size: 11px; color: #10b981; margin-bottom: 4px;">${match.comp}</div>
+          <div style="font-weight: 700; color: white; margin-bottom: 4px;">${match.teams[0]} vs ${match.teams[1]}</div>
+          <div style="font-size: 12px; color: #94a3b8;">${match.time} • ${match.sport}</div>
+        </div>
+      `).join('');
+
+      aiSearchResults.classList.remove('hidden');
+
+      // Add click handlers
+      document.querySelectorAll('#aiSearchResults .search-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const eventId = item.dataset.eventId;
+          selectAIEvent(eventId);
+        });
+      });
     } else {
-      sidebar.appendChild(panel);
+      aiSearchResults.innerHTML = '<div style="padding: 12px; color: #94a3b8; text-align: center;">No matches found</div>';
+      aiSearchResults.classList.remove('hidden');
+    }
+  });
+
+  // Close AI search results on click outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.ai-search-section')) {
+      aiSearchResults.classList.add('hidden');
+    }
+  });
+}
+
+// Select event for AI prediction
+function selectAIEvent(eventId) {
+  selectedEvent = MATCHES.find(m => m.id === eventId);
+
+  console.log('Selected event:', selectedEvent); // DEBUG - check if teams array exists
+
+  if (selectedEvent) {
+    selectedEventDisplay.innerHTML = `
+      <div class="event-info">
+        <span class="event-league">${selectedEvent.comp}</span>
+        <h3 class="event-match">${selectedEvent.teams[0]} vs ${selectedEvent.teams[1]}</h3>
+        <span class="event-time">${selectedEvent.time}</span>
+      </div>
+    `;
+
+    selectedEventDisplay.classList.remove('hidden');
+    getPredictionBtn.classList.remove('hidden');
+    aiSearchResults.classList.add('hidden');
+    aiPredictionResults.classList.add('hidden');
+    aiEventSearch.value = '';
+  }
+}
+
+// Get AI prediction - FIXED VERSION
+if (getPredictionBtn) {
+  getPredictionBtn.addEventListener('click', () => {
+    if (!selectedEvent) return;
+
+    // Simulate API call with loading state
+    getPredictionBtn.textContent = 'Analyzing...';
+    getPredictionBtn.disabled = true;
+
+    setTimeout(() => {
+      // Calculate prediction data
+      const homePercent = Math.floor(Math.random() * 40) + 45; // 45-85%
+      const awayPercent = 100 - homePercent;
+      const totalAnalysts = Math.floor(Math.random() * 1000) + 500;
+      const homeAnalysts = Math.floor((homePercent / 100) * totalAnalysts);
+      const awayAnalysts = totalAnalysts - homeAnalysts;
+
+      // Get team names from MATCHES array structure
+      const homeTeam = selectedEvent.teams[0];
+      const awayTeam = selectedEvent.teams[1];
+
+      // Update prediction display
+      document.getElementById('totalBetsCount').textContent = `${totalAnalysts.toLocaleString()} signals analyzed`;
+
+      document.getElementById('homeTeamName').textContent = homeTeam;
+      document.getElementById('homePercent').textContent = `${homePercent}%`;
+      document.getElementById('homeBar').style.width = `${homePercent}%`;
+      document.getElementById('homeBetsCount').textContent = `${homeAnalysts.toLocaleString()} indicators favor home win`;
+
+      document.getElementById('awayTeamName').textContent = awayTeam;
+      document.getElementById('awayPercent').textContent = `${awayPercent}%`;
+      document.getElementById('awayBar').style.width = `${awayPercent}%`;
+      document.getElementById('awayBetsCount').textContent = `${awayAnalysts.toLocaleString()} indicators favor away win`;
+
+      // AI recommendation
+      const winner = homePercent > awayPercent ? homeTeam : awayTeam;
+      const confidence = Math.max(homePercent, awayPercent);
+      const winType = homePercent > awayPercent ? 'Home' : 'Away';
+
+      document.getElementById('aiRecommendation').innerHTML = `
+        <strong>My Analysis:</strong> ${winType} Win (${winner}) has ${confidence}% probability based on ${totalAnalysts.toLocaleString()} data signals
+      `;
+
+      // Show results with animation
+      aiPredictionResults.classList.remove('hidden');
+      getPredictionBtn.classList.add('hidden');
+
+      toast('🤖 AI prediction generated!');
+
+      // Reset button
+      getPredictionBtn.textContent = 'Get AI Prediction';
+      getPredictionBtn.disabled = false;
+    }, 1200); // 1.2 second "thinking" delay
+  });
+}
+
+
+// =========================
+// Init (startup)
+// =========================
+renderTrending();
+ensureSlipChrome();   // create wallet + mode UI
+setTimeout(() => {
+  renderCards();
+  renderSlip();
+}, 300);
+
+// ========================================
+// MODERN FLOATING BET SLIP
+// ========================================
+
+const betSlipCollapsed = document.getElementById('betSlipCollapsed');
+const betSlipExpanded = document.getElementById('betSlipExpanded');
+const closeExpanded = document.getElementById('closeExpanded');
+const betItemsContainer = document.getElementById('betItemsContainer');
+const stakeAmount = document.getElementById('stakeAmount');
+const potentialWin = document.getElementById('potentialWin');
+const placeBetBtn = document.getElementById('placeBetBtn');
+
+// Toggle bet slip
+betSlipCollapsed?.addEventListener('click', () => {
+  betSlipCollapsed.style.display = 'none';
+  betSlipExpanded?.classList.remove('hidden');
+});
+
+closeExpanded?.addEventListener('click', () => {
+  betSlipExpanded?.classList.add('hidden');
+  betSlipCollapsed.style.display = 'flex';
+});
+
+// Update collapsed state
+function updateCollapsedBetSlip() {
+  const count = document.querySelector('.slip-count');
+  const odds = document.querySelector('.slip-odds');
+
+  if (count) count.textContent = slip.length;
+
+  // Calculate total odds
+  const totalOdds = slip.reduce((acc, bet) => acc * bet.odd, 1);
+  if (odds) odds.textContent = totalOdds.toFixed(2);
+
+  // Show/hide collapsed state
+  if (slip.length > 0) {
+    betSlipCollapsed.style.display = 'flex';
+  } else {
+    betSlipCollapsed.style.display = 'none';
+    betSlipExpanded?.classList.add('hidden');
+  }
+  autoSwitchBetTab(); // ← ADD THIS LINE
+
+}
+
+// Render bet items in expanded view
+function renderBetItems() {
+  if (!betItemsContainer) return;
+
+  betItemsContainer.innerHTML = slip.map((bet, index) => `
+    <div class="bet-item">
+      <div class="bet-item-header">
+        <div class="bet-item-info">
+          <div class="bet-item-league">
+            ${bet.isLive ? '<span class="live-dot"></span>' : ''}
+            Match Result SO
+          </div>
+          <div class="bet-item-match">${bet.teams[0]} - ${bet.teams[1]}</div>
+          <div class="bet-item-selection">${bet.market}</div>
+        </div>
+        <div class="bet-item-odd">${bet.odd.toFixed(2)}</div>
+      </div>
+      <button class="remove-bet-item" data-index="${index}">×</button>
+    </div>
+  `).join('');
+
+  // Add remove handlers
+  document.querySelectorAll('.remove-bet-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = parseInt(btn.dataset.index);
+      slip.splice(index, 1);
+      saveSlip();
+      updateOddSelections();
+      renderBetItems();
+      updateCollapsedBetSlip();
+      updatePotentialWin();
+    });
+  });
+
+  updatePotentialWin();
+}
+
+// Calculate potential winnings
+function updatePotentialWin() {
+  const stake = parseFloat(document.getElementById('stake')?.value) || 0;  // ✅ CORRECT ID
+  const totalOdds = slip.reduce((acc, bet) => acc * bet.odd, 1);
+  const potential = stake * totalOdds;
+
+  if (potentialWin) {
+    potentialWin.textContent = potential.toFixed(2) + ' лв.';
+  }
+
+  // Update header count
+  const headerCount = document.querySelector('.header-count');
+  if (headerCount) {
+    headerCount.textContent = `${slip.length}/30`;
+  }
+
+  // Enable/disable place bet button
+  if (placeBetBtn) {
+    placeBetBtn.disabled = slip.length === 0 || stake <= 0;
+  }
+}
+
+// Quick stake buttons
+document.querySelectorAll('.quick-stake-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const amount = btn.dataset.amount;
+    if (amount === 'max') {
+      stakeAmount.value = wallet.toFixed(2);
+    } else {
+      const current = parseFloat(stakeAmount.value) || 0;
+      stakeAmount.value = (current + parseFloat(amount)).toFixed(2);
+    }
+    updatePotentialWin();
+  });
+});
+
+// Stake input change
+document.getElementById('stake')?.addEventListener('input', updatePotentialWin);
+
+// Tab switching with validation
+document.querySelectorAll('.bet-tab').forEach(tab => {
+  tab.addEventListener('click', function () {
+    const tabType = this.dataset.tab;
+
+    if (tabType === 'single' && slip.length >= 2) {
+      toast('Single bets require exactly 1 selection');
+      return;
+    }
+
+    if (tabType === 'multiple' && slip.length < 2) {
+      toast('Multiple bets require 2+ selections');
+      return;
+    }
+
+    document.querySelectorAll('.bet-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Auto-switch to Multiple tab when 2+ events
+function autoSwitchBetTab() {
+  const singleTab = document.querySelector('.bet-tab[data-tab="single"]');
+  const multipleTab = document.querySelector('.bet-tab[data-tab="multiple"]');
+
+  if (!singleTab || !multipleTab) return;
+
+  if (slip.length >= 2) {
+    document.querySelectorAll('.bet-tab').forEach(t => t.classList.remove('active'));
+    multipleTab.classList.add('active');
+  } else if (slip.length === 1) {
+    document.querySelectorAll('.bet-tab').forEach(t => t.classList.remove('active'));
+    singleTab.classList.add('active');
+  }
+}
+
+
+
+// ========================================
+// PROMOTIONAL CAROUSEL JAVASCRIPT
+// Add this to your main JS file or create a separate carousel.js file
+// ========================================
+
+class PromoCarousel {
+  constructor() {
+    this.currentSlide = 0;
+    this.totalSlides = 5;
+    this.isPlaying = true;
+    this.autoPlayInterval = null;
+    this.autoPlayDelay = 5000; // 5 seconds
+
+    this.init();
+  }
+
+  init() {
+    // Get DOM elements
+    this.carousel = document.getElementById('promoCarousel');
+    this.slides = document.querySelectorAll('.promo-slide');
+    this.prevBtn = document.getElementById('carouselPrev');
+    this.nextBtn = document.getElementById('carouselNext');
+    this.dots = document.querySelectorAll('.carousel-dot');
+    this.progress = document.getElementById('carouselProgress');
+
+    // Setup event listeners
+    this.setupEventListeners();
+
+    // Start autoplay
+    this.startAutoPlay();
+
+    // Update progress bar
+    this.updateProgress();
+  }
+
+  setupEventListeners() {
+    // Previous button
+    this.prevBtn.addEventListener('click', () => {
+      this.prevSlide();
+      this.resetAutoPlay();
+    });
+
+    // Next button
+    this.nextBtn.addEventListener('click', () => {
+      this.nextSlide();
+      this.resetAutoPlay();
+    });
+
+    // Dots navigation
+    this.dots.forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        this.goToSlide(index);
+        this.resetAutoPlay();
+      });
+    });
+
+    // Pause on hover
+    this.carousel.addEventListener('mouseenter', () => {
+      this.pauseAutoPlay();
+    });
+
+    this.carousel.addEventListener('mouseleave', () => {
+      this.resumeAutoPlay();
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        this.prevSlide();
+        this.resetAutoPlay();
+      } else if (e.key === 'ArrowRight') {
+        this.nextSlide();
+        this.resetAutoPlay();
+      }
+    });
+
+    // Touch/Swipe support for mobile
+    this.setupTouchEvents();
+  }
+
+  setupTouchEvents() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    this.carousel.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+
+    this.carousel.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      this.handleSwipe(touchStartX, touchEndX);
+    });
+  }
+
+  handleSwipe(startX, endX) {
+    const swipeThreshold = 50;
+    const diff = startX - endX;
+
+    if (Math.abs(diff) > swipeThreshold) {
+      if (diff > 0) {
+        // Swipe left - next slide
+        this.nextSlide();
+      } else {
+        // Swipe right - previous slide
+        this.prevSlide();
+      }
+      this.resetAutoPlay();
     }
   }
 
-  const listEl  = panel.querySelector('#recentList');
-  const clearEl = panel.querySelector('#clearRecent');
-
-  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
-  const save = (arr) => localStorage.setItem(KEY, JSON.stringify(arr.slice(-5))); // keep last 5
-
-  function renderRecent() {
-    const arr = load();
-    listEl.innerHTML = arr.length
-      ? arr.slice().reverse().map(p => `
-          <li class="side-item" style="align-items:flex-start;">
-            <div style="display:flex;flex-direction:column;gap:2px;width:100%;">
-              <div style="display:flex;justify-content:space-between;width:100%;">
-                <strong>${p.time}</strong>
-                <span class="pill" style="border-color:var(--divider);">${fmt2(p.total)}</span>
-              </div>
-              <div class="muted" style="font-size:12px;">
-                ${p.count} sel • Stake ${fmt2(p.stake)} • Payout ${fmt2(p.payout)}
-              </div>
-            </div>
-          </li>
-        `).join('')
-      : `<li class="side-item muted">No bets placed yet.</li>`;
+  nextSlide() {
+    this.goToSlide((this.currentSlide + 1) % this.totalSlides);
   }
 
-  // Clear history
-  clearEl.addEventListener('click', () => { localStorage.removeItem(KEY); renderRecent(); });
-
-  // Record on Place Bet (document capture so other handlers can't block us)
-  document.addEventListener('click', (ev) => {
-    if (!ev.target.closest('#place')) return;
-
-    const stake = Number(document.getElementById('stake').value) || 0;
-    // IMPORTANT: use local `slip` (NOT window.slip)
-    if (!slip.length || stake <= 0) return;
-
-    const total  = slip.reduce((a, b) => a * Number(b.odd), 1) || 1; // tolerate bad odds
-    const payout = stake * total;
-    const when   = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const arr = load();
-    const rec = { time: when, count: slip.length, stake, total, payout };
-
-    // De-dupe identical consecutive entries
-    const last = arr[arr.length - 1];
-    const same = last
-      && last.count === rec.count
-      && fmt2(last.stake)  === fmt2(rec.stake)
-      && fmt2(last.total)  === fmt2(rec.total)
-      && fmt2(last.payout) === fmt2(rec.payout);
-
-    if (!same) { arr.push(rec); save(arr); renderRecent(); }
-  }, true);
-
-  /* ==== ODDS FORMAT (Dec / Frac / US) — HTML-driven ==== */
-(() => {
-  if (window.__oddsFmtInit) return; 
-  window.__oddsFmtInit = true;
-
-  const select = document.getElementById('oddsFormat');
-  if (!select) return; // selector not on page
-
-  const KEY = 'mbets-oddsfmt';
-  const gcd = (a,b)=> b ? gcd(b, a % b) : a;
-  const toFrac = (d) => {
-    if (!isFinite(d) || d <= 1) return '-';
-    const n = Math.round((d - 1) * 100), den = 100, g = gcd(n, den) || 1;
-    return `${n/g}/${den/g}`;
-  };
-  const toUS = (d) => {
-    if (!isFinite(d) || d <= 1) return '-';
-    return d >= 2 ? `+${Math.round((d - 1) * 100)}`
-                  : `-${Math.round(100 / (d - 1))}`;
-  };
-  const formatOdd = (dec, mode) => {
-    const d = Number(dec);
-    if (!isFinite(d)) return '-';
-    if (mode === 'dec')  return d.toFixed(2);
-    if (mode === 'frac') return toFrac(d);
-    return toUS(d);
-  };
-
-  // state
-  let mode = localStorage.getItem(KEY) || 'dec';
-  select.value = mode;
-
-  function repaint() {
-    // cards
-    document.querySelectorAll('.odd-btn').forEach(btn => {
-      const v = Number(btn.dataset.odd);
-      const el = btn.querySelector('.val');
-      if (el) el.textContent = formatOdd(v, mode);
-    });
-    // slip items
-    document.querySelectorAll('.slip-item').forEach(it => {
-      const id = it.querySelector('[data-remove]')?.dataset.remove;
-      const s  = id && slip.find(x => x.matchId === id);
-      const el = it.querySelector('.odds');
-      if (s && el) el.textContent = formatOdd(s.odd, mode);
-    });
-    // total odds label (display only)
-    const total = slip.reduce((a,b)=> a * Number(b.odd), 1) || 1;
-    const totEl = document.getElementById('totalOdds');
-    if (totEl) totEl.textContent = formatOdd(total, mode);
+  prevSlide() {
+    this.goToSlide((this.currentSlide - 1 + this.totalSlides) % this.totalSlides);
   }
 
-  // hook your renders
-  const rCards = window.renderCards;
-  window.renderCards = function(){ rCards && rCards(); repaint(); };
+  goToSlide(index) {
+    // Remove active class from current slide and dot
+    this.slides[this.currentSlide].classList.remove('active');
+    this.slides[this.currentSlide].classList.add('prev');
+    this.dots[this.currentSlide].classList.remove('active');
 
-  const rSlip  = window.renderSlip;
-  window.renderSlip  = function(){ rSlip && rSlip(); repaint(); };
+    // Update current slide
+    this.currentSlide = index;
 
-  // initial paint
-  repaint();
+    // Add active class to new slide and dot
+    setTimeout(() => {
+      this.slides.forEach(slide => slide.classList.remove('prev'));
+      this.slides[this.currentSlide].classList.add('active');
+    }, 50);
 
-  // save + repaint on change
-  select.addEventListener('change', () => {
-    mode = select.value;
-    localStorage.setItem(KEY, mode);
-    repaint();
+    this.dots[this.currentSlide].classList.add('active');
+
+    // Update progress bar
+    this.updateProgress();
+  }
+
+  updateProgress() {
+    const progressPercent = ((this.currentSlide + 1) / this.totalSlides) * 100;
+    this.progress.style.width = `${progressPercent}%`;
+  }
+
+  startAutoPlay() {
+    if (this.isPlaying) {
+      this.autoPlayInterval = setInterval(() => {
+        this.nextSlide();
+      }, this.autoPlayDelay);
+    }
+  }
+
+  pauseAutoPlay() {
+    this.isPlaying = false;
+    if (this.autoPlayInterval) {
+      clearInterval(this.autoPlayInterval);
+      this.autoPlayInterval = null;
+    }
+  }
+
+  resumeAutoPlay() {
+    this.isPlaying = true;
+    this.startAutoPlay();
+  }
+
+  resetAutoPlay() {
+    this.pauseAutoPlay();
+    this.resumeAutoPlay();
+  }
+
+  destroy() {
+    // Clean up - stop autoplay and remove event listeners
+    this.pauseAutoPlay();
+  }
+}
+
+
+// ========================================
+// ADDITIONAL HELPER FUNCTIONS
+// ========================================
+
+// Function to add custom slide (if you want to add slides dynamically)
+function addCustomSlide(slideData) {
+  const carousel = document.getElementById('promoCarousel');
+  const dotsContainer = document.getElementById('carouselDots');
+
+  if (!carousel || !dotsContainer) return;
+
+  // Create new slide HTML
+  const slideHTML = `
+    <div class="promo-slide" data-slide="${slideData.index}">
+      <div class="slide-bg-pattern"></div>
+      <div class="slide-decoration slide-decoration-1"></div>
+      <div class="slide-decoration slide-decoration-2"></div>
+      
+      <div class="slide-content">
+        <div class="slide-badge">
+          <i class="${slideData.badgeIcon}"></i>
+          <span>${slideData.badgeText}</span>
+        </div>
+        <h2 class="slide-title">${slideData.title}</h2>
+        <div class="slide-subtitle">${slideData.subtitle}</div>
+        <p class="slide-description">${slideData.description}</p>
+        <button class="slide-cta ${slideData.ctaClass}">
+          ${slideData.ctaText}
+          <i class="fas fa-bolt"></i>
+        </button>
+      </div>
+      
+      <div class="slide-icon-decoration">
+        <i class="${slideData.iconDecoration}"></i>
+      </div>
+    </div>
+  `;
+
+  // Create new dot
+  const dotHTML = `<button class="carousel-dot" data-slide="${slideData.index}"></button>`;
+
+  // Insert before navigation elements
+  const progressBar = carousel.querySelector('.carousel-progress-bg');
+  carousel.insertBefore(createElementFromHTML(slideHTML), progressBar);
+  dotsContainer.insertAdjacentHTML('beforeend', dotHTML);
+}
+
+// Helper function to create element from HTML string
+function createElementFromHTML(htmlString) {
+  const div = document.createElement('div');
+  div.innerHTML = htmlString.trim();
+  return div.firstChild;
+}
+
+// Function to update carousel after adding/removing slides
+function updateCarouselSlides() {
+  if (window.promoCarousel) {
+    window.promoCarousel.destroy();
+    window.promoCarousel = new PromoCarousel();
+  }
+}
+
+
+// ========================================
+// CAROUSEL CONTROL FUNCTIONS
+// ========================================
+
+// Function to manually control carousel from outside
+function carouselGoTo(slideIndex) {
+  if (window.promoCarousel) {
+    window.promoCarousel.goToSlide(slideIndex);
+  }
+}
+
+function carouselNext() {
+  if (window.promoCarousel) {
+    window.promoCarousel.nextSlide();
+  }
+}
+
+function carouselPrev() {
+  if (window.promoCarousel) {
+    window.promoCarousel.prevSlide();
+  }
+}
+
+function carouselPause() {
+  if (window.promoCarousel) {
+    window.promoCarousel.pauseAutoPlay();
+  }
+}
+
+function carouselResume() {
+  if (window.promoCarousel) {
+    window.promoCarousel.resumeAutoPlay();
+  }
+}
+
+// ========================================
+// VISIBILITY API - PAUSE WHEN TAB IS HIDDEN
+// ========================================
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    carouselPause();
+  } else {
+    carouselResume();
+  }
+});
+
+// ========================================
+// ANALYTICS TRACKING (Optional)
+// ========================================
+
+// Track which slides users interact with most
+function trackSlideView(slideIndex) {
+  // Add your analytics code here
+  // Example: Google Analytics
+  // gtag('event', 'carousel_slide_view', {
+  //   'slide_index': slideIndex
+  // });
+
+  console.log(`Slide ${slideIndex} viewed`);
+}
+
+// ==================== SPORTS NAVIGATION & MODAL ====================
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  // ==================== SPORT NAVIGATION BAR ====================
+
+  // Get all sport navigation items
+  const sportNavItems = document.querySelectorAll('.sport-nav-item');
+
+  // Handle sport selection from navigation bar
+  sportNavItems.forEach(item => {
+    item.addEventListener('click', () => {
+      // Remove active class from all items
+      sportNavItems.forEach(navItem => navItem.classList.remove('active'));
+
+      // Add active class to clicked item
+      item.classList.add('active');
+
+      // Get selected sport
+      const sport = item.getAttribute('data-sport');
+
+      // Filter matches by sport
+      filterMatchesBySport(sport);
+
+      // Scroll to live matches section
+      const liveEventsSection = document.querySelector('.live-events-section');
+      if (liveEventsSection) {
+        liveEventsSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    });
   });
-})();
 
-  // Initial paint
-  renderRecent();
-})();
+  // ==================== ALL SPORTS MODAL ====================
 
-// Init
-renderTrending();
-renderCards();
-renderSlip();
+  // Show All Sports button
+  const showAllBtn = document.getElementById('showAllSportsBtn');
+  const allSportsModal = document.getElementById('allSportsModal');
+  const closeAllSports = document.getElementById('closeAllSports');
+  const allSportsOverlay = document.querySelector('.all-sports-overlay');
+
+  // Open modal
+  if (showAllBtn) {
+    showAllBtn.addEventListener('click', () => {
+      allSportsModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    });
+  }
+
+  // Close modal function
+  function closeAllSportsModal() {
+    allSportsModal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+
+  // Close button
+  if (closeAllSports) {
+    closeAllSports.addEventListener('click', closeAllSportsModal);
+  }
+
+  // Click outside to close
+  if (allSportsOverlay) {
+    allSportsOverlay.addEventListener('click', closeAllSportsModal);
+  }
+
+  // ESC key to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && allSportsModal?.classList.contains('active')) {
+      closeAllSportsModal();
+    }
+  });
+
+
+  // ==================== DATE FILTER FUNCTIONALITY ====================
+
+  // Generate dynamic dates for the next 7 days
+  function initializeDateFilter() {
+    const todayEl = document.getElementById('todayDate');
+    if (!todayEl) return; // Exit if elements don't exist
+
+    const today = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Set Today
+    document.getElementById('todayDate').textContent = `${months[today.getMonth()]} ${today.getDate()}`;
+
+    // Set Tomorrow
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    document.getElementById('tomorrowDate').textContent = `${months[tomorrow.getMonth()]} ${tomorrow.getDate()}`;
+
+    // Set next 5 days (day3 to day7)
+    for (let i = 3; i <= 8; i++) {
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + (i - 1));
+
+      const dayLabel = days[futureDate.getDay()];
+      const dateValue = `${months[futureDate.getMonth()]} ${futureDate.getDate()}`;
+
+      document.getElementById(`day${i}Label`).textContent = dayLabel;
+      document.getElementById(`day${i}Date`).textContent = dateValue;
+    }
+  }
+
+  // ==================== SESSION FILTER (Day/Night) ====================
+
+  function setupSessionFilters() {
+    const sessionButtons = document.querySelectorAll('.session-filter-btn');
+
+    sessionButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remove active from all
+        sessionButtons.forEach(b => b.classList.remove('active'));
+
+        // Add active to clicked
+        btn.classList.add('active');
+
+        // Get selected session
+        const selectedSession = btn.getAttribute('data-session');
+        const sessionLabel = btn.querySelector('.session-label').textContent;
+
+        // Show toast
+        toast(`Filtering: ${sessionLabel}`);
+        // Filter events by time session
+        filterEventsBySession(selectedSession);
+      });
+    });
+  }
+
+  function filterEventsBySession(session) {
+    console.log('Filtering events for session:', session);
+
+    // Logic to filter events:
+    // - 'all': Show all events (7am - 7am next day)
+    // - 'day': Show events from 7:00 AM to 7:00 PM
+    // - 'night': Show events from 7:00 PM to 7:00 AM
+
+    // You'll implement actual filtering based on event start times
+  }
+
+
+
+  // Handle date filter clicks
+  function setupDateFilters() {
+    const dateButtons = document.querySelectorAll('.date-filter-btn');
+
+    dateButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remove active from all
+        dateButtons.forEach(b => b.classList.remove('active'));
+
+        // Add active to clicked
+        btn.classList.add('active');
+
+        // Get selected date
+        const selectedDate = btn.getAttribute('data-date');
+        const dateLabel = btn.querySelector('.date-label').textContent;
+
+        // Show toast
+        toast(`Showing events for ${dateLabel}`);
+        // Here you can filter sports/matches by date
+        console.log('Selected date:', selectedDate);
+      });
+    });
+  }
+
+
+  // ==================== MODAL SPORT SELECTION ====================
+
+  // Handle sport selection from modal
+  const allSportCards = document.querySelectorAll('.all-sport-card');
+
+  allSportCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const sport = card.getAttribute('data-sport');
+
+      // Close modal
+      closeAllSportsModal();
+
+      // Update navigation bar active state
+      sportNavItems.forEach(navItem => navItem.classList.remove('active'));
+      const matchingNavItem = document.querySelector(`.sport-nav-item[data-sport="${sport}"]`);
+      if (matchingNavItem) {
+        matchingNavItem.classList.add('active');
+      }
+
+      // Filter matches
+      filterMatchesBySport(sport);
+
+      // Scroll to live matches
+      const liveEventsSection = document.querySelector('.live-events-section');
+      if (liveEventsSection) {
+        setTimeout(() => {
+          liveEventsSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }, 100);
+      }
+    });
+  });
+
+  // ==================== SPORTS NAVIGATION & MODAL ====================
+  // (your existing sports code)
+
+  // Promotions Modal
+  const promotionsBtn = document.getElementById('promotionsBtn');
+  const promotionsModal = document.getElementById('promotionsModal');
+  const closePromotions = document.getElementById('closePromotions');
+  const promotionsOverlay = document.querySelector('.promotions-overlay');
+
+  promotionsBtn.addEventListener('click', () => {
+    promotionsModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    document.body.style.overflowX = 'hidden'; // ADD THIS
+    document.documentElement.style.overflow = 'hidden'; // ADD THIS
+  });
+
+  if (closePromotions) {
+    closePromotions.addEventListener('click', () => {
+      promotionsModal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      document.body.style.overflowX = 'auto'; // ADD THIS
+      document.documentElement.style.overflow = 'auto'; // ADD THIS
+    });
+  }
+
+  if (promotionsOverlay) {
+    promotionsOverlay.addEventListener('click', () => {
+      promotionsModal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      document.body.style.overflowX = 'auto'; // ADD THIS
+      document.documentElement.style.overflow = 'auto'; // ADD THIS
+    });
+  }
+
+  // Close with ESC key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && promotionsModal?.classList.contains('active')) {
+      promotionsModal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      document.body.style.overflowX = 'auto'; // ADD THIS
+      document.documentElement.style.overflow = 'auto'; // ADD THIS
+    }
+  });
+  // ==================== PROMO CLAIM BUTTONS ====================
+  const promoClaimButtons = document.querySelectorAll('.promo-claim-btn');
+
+  promoClaimButtons.forEach((button) => {
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      const card = button.closest('.promo-card');
+      const promoTitle = card.querySelector('.promo-title').textContent;
+      const promoAmount = card.querySelector('.promo-amount').textContent;
+
+      showPromoToast(`${promoTitle} - ${promoAmount} claimed!`);
+    });
+  });
+
+});
+
+// Promo Toast Function
+function showPromoToast(message) {
+  let toast = document.querySelector('.promo-toast');
+
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'promo-toast';
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+
+// ==================== NAVIGATION SYSTEM ====================
+
+function showSection(sectionId) {
+  // Hide all sections
+  document.querySelectorAll('.page-section').forEach(section => {
+    section.classList.remove('active');
+  });
+
+  // Show target section
+  const target = document.getElementById(sectionId);
+  if (target) {
+    target.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Update nav links
+  document.querySelectorAll('.nav__link').forEach(link => {
+    link.classList.remove('active');
+  });
+}
+
+// In Play - Live events only
+document.querySelector('a[href="#inplay"]')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showSection('inplaySection');
+  e.target.classList.add('active');
+  showToast('Live Matches');
+});
+
+// All Sports Navigation - Goes to page (not modal)
+document.querySelector('a[href="#all"]')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showSection('allSportsPage');
+  e.target.classList.add('active');
+  toast('All Sports');
+});
+
+// Show All button from home page
+document.getElementById('showAllSportsBtn')?.addEventListener('click', () => {
+  showSection('allSportsPage');
+  toast('All Sports');
+});
+
+
+// Social - Social feed only
+document.querySelector('a[href="#social"]')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showSection('socialSection');
+  e.target.classList.add('active');
+  if (typeof renderPosts === 'function') renderPosts();
+  showToast('Social Feed');
+});
+
+// Comment Modal Functionality
+const commentModal = document.getElementById('commentModal');
+const closeCommentModal = document.getElementById('closeCommentModal');
+const commentInput = document.getElementById('commentInput');
+const postCommentBtn = document.getElementById('postCommentBtn');
+const commentsList = document.getElementById('commentsList');
+
+// Open comment modal when clicking comment button
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.post-comment-btn-trigger')) {
+    commentModal.classList.remove('hidden');
+  }
+});
+
+// Close modal
+closeCommentModal?.addEventListener('click', () => {
+  commentModal.classList.add('hidden');
+});
+
+commentModal?.querySelector('.comment-modal-overlay')?.addEventListener('click', () => {
+  commentModal.classList.add('hidden');
+});
+
+// Post comment
+postCommentBtn?.addEventListener('click', () => {
+  const text = commentInput.value.trim();
+  if (!text) return;
+
+  addComment(text);
+  commentInput.value = '';
+});
+
+// Enter key to post
+commentInput?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    postCommentBtn.click();
+  }
+});
+
+function addComment(text) {
+  const comment = document.createElement('div');
+  comment.className = 'comment-item';
+  comment.innerHTML = `
+    <img src="user-avatar.jpg" alt="User" class="comment-avatar">
+    <div class="comment-content">
+      <div>
+        <span class="comment-author">You</span>
+        <span class="comment-time">Just now</span>
+      </div>
+      <p class="comment-text">${text}</p>
+    </div>
+  `;
+  commentsList.prepend(comment);
+}
+
+// Casino
+document.querySelector('a[href="#casino"]')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  showToast('Casino Coming Soon');
+});
+
+// Logo - Back to home
+document.getElementById('navToggle')?.addEventListener('click', () => {
+  showSection('homeSection');
+  document.querySelectorAll('.nav__link').forEach(l => l.classList.remove('active'));
+
+  // Close All Sports modal if open
+  const modal = document.getElementById('allSportsModal');
+  if (modal && modal.classList.contains('active')) {
+    modal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+});
+
+
+// ==================== PROMOTIONAL CAROUSEL CTA ====================
+
+// Track CTA button clicks
+const ctaButtons = document.querySelectorAll('.slide-cta');
+
+ctaButtons.forEach((button, index) => {
+  button.addEventListener('click', () => {
+    console.log(`CTA clicked on slide ${index}`);
+    // Add your navigation logic here
+    // Example: window.location.href = '/signup';
+  });
+});
+
+// Preload slide images for performance
+function preloadSlideImages() {
+  const slides = document.querySelectorAll('.promo-slide');
+  slides.forEach(slide => {
+    const bgImage = window.getComputedStyle(slide).backgroundImage;
+    if (bgImage && bgImage !== 'none') {
+      const img = new Image();
+      img.src = bgImage.slice(4, -1).replace(/"/g, '');
+    }
+  });
+}
+
+preloadSlideImages();
+
+console.log('✅ Sports Navigation & Modal initialized successfully!');
+
+
+// Check if carousel exists on page
+const carouselElement = document.getElementById('promoCarousel');
+
+if (carouselElement) {
+  // Initialize the carousel
+  const promoCarousel = new PromoCarousel();
+
+  // Optional: Add smooth scroll to carousel when page loads
+  setTimeout(() => {
+    carouselElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 500);
+
+  // Make carousel instance globally accessible if needed
+  window.promoCarousel = promoCarousel;
+}
+
+// END DOMContentLoaded
+
+// ==================== FILTER MATCHES BY SPORT ====================
+
+function filterMatchesBySport(sport) {
+  console.log('Filtering by sport:', sport);
+
+  // ONLY filter PRE-MATCH sections, NOT live matches
+  const preMatchSections = document.querySelectorAll('.pre-match-section .league-section');
+
+  // Live matches section should NEVER be filtered
+  const liveMatchesSection = document.querySelector('.live-events-section');
+  if (liveMatchesSection) {
+    liveMatchesSection.style.display = 'block'; // Always visible
+  }
+
+  if (preMatchSections.length === 0) {
+    console.warn('⚠️ No pre-match sections found. Waiting for pre-match events to be added.');
+    showToast('Pre-match events coming soon');
+    return;
+  }
+
+  if (sport === 'all') {
+    // Show all pre-match sections
+    preMatchSections.forEach(section => {
+      section.style.display = 'block';
+    });
+    showToast('Showing all pre-match events');
+  } else {
+    // Filter pre-match by specific sport
+    let matchesFound = false;
+
+    preMatchSections.forEach(section => {
+      const sectionSport = section.getAttribute('data-sport');
+      if (sectionSport === sport) {
+        section.style.display = 'block';
+        matchesFound = true;
+      } else {
+        section.style.display = 'none';
+      }
+    });
+
+    // If no matches found, show message
+    if (!matchesFound) {
+      console.warn(`No pre-match events found for sport: ${sport}`);
+      showToast('No pre-match events for this sport');
+    } else {
+      // Get sport name for toast
+      const sportNameElement = document.querySelector(`[data-sport="${sport}"] .sport-name`);
+      if (sportNameElement) {
+        const sportName = sportNameElement.textContent;
+        showToast(`Showing ${sportName} pre-match events`);
+      }
+    }
+  }
+}
+
+// ==================== TOAST NOTIFICATION ====================
+
+function showToast(message) {
+  let toast = document.querySelector('.sport-filter-toast');
+
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'sport-filter-toast';
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2000);
+}
+
+// ==================== SMOOTH HORIZONTAL SCROLL ====================
+
+const sportsScroll = document.querySelector('.sports-nav-scroll');
+if (sportsScroll) {
+  sportsScroll.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      sportsScroll.scrollLeft += e.deltaY;
+    }
+  });
+}
+// Click and drag to scroll
+if (sportsScroll) {
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  sportsScroll.addEventListener('mousedown', (e) => {
+    isDown = true;
+    sportsScroll.style.cursor = 'grabbing';
+    startX = e.pageX - sportsScroll.offsetLeft;
+    scrollLeft = sportsScroll.scrollLeft;
+  });
+
+  sportsScroll.addEventListener('mouseleave', () => {
+    isDown = false;
+    sportsScroll.style.cursor = 'grab';
+  });
+
+  sportsScroll.addEventListener('mouseup', () => {
+    isDown = false;
+    sportsScroll.style.cursor = 'grab';
+  });
+
+  sportsScroll.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - sportsScroll.offsetLeft;
+    const walk = (x - startX) * 3;
+    sportsScroll.scrollLeft = scrollLeft - walk;
+  });
+}
+// ==================== SOCIAL FEED ====================
+// Social Feed JavaScript
+
+// Sample posts data
+const postsData = [
+
+  {
+    id: 1,
+    author: "BetNextGen Official",
+    username: "@betnextgen",
+    avatar: "🏆",
+    time: "2h ago",
+    content: "🔥 BREAKING: Lakers complete massive trade deal! LeBron welcomes new superstar to LA. Championship odds now at 2.50. What's your take?",
+    image: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&q=80",
+    likes: 3247,
+    comments: 142,
+    shares: 892,
+    isLiked: false,
+    isBookmarked: false,
+    trending: true
+  },
+  {
+    id: 2,
+    author: "Sports Analyst Pro",
+    username: "@sportsanalyst",
+    avatar: "📊",
+    time: "4h ago",
+    content: "⚽ Man City vs Arsenal - Match Preview\n\n✅ City: 14 wins in last 16\n❌ Arsenal: 3 losses in 5 away games\n\n💰 My prediction: City 2-1 | Odds: 3.50\n\nWho are you backing? 👇",
+    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80",
+    likes: 1823,
+    comments: 89,
+    shares: 234,
+    isLiked: false,
+    isBookmarked: false,
+    trending: false
+  },
+  {
+    id: 3,
+    author: "NBA Insider",
+    username: "@nbainsider",
+    avatar: "🏀",
+    time: "6h ago",
+    content: "🚨 POLL: Who wins the NBA Finals?\n\n🔵 Celtics (42%)\n🟡 Lakers (38%)\n🟢 Bucks (20%)\n\n🗳️ 15,439 votes | Ends in 2 hours\n\nCast your vote and win free bets!",
+    image: "https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=800&q=80",
+    likes: 5621,
+    comments: 312,
+    shares: 1205,
+    isLiked: true,
+    isBookmarked: true,
+    trending: true
+  },
+  {
+    id: 4,
+    author: "Top Tipster King",
+    username: "@bettipster",
+    avatar: "👑",
+    time: "8h ago",
+    content: "🎯 My record this week:\n✅ 15 wins\n❌ 3 losses\n📈 83% accuracy\n🔥 Current streak: 8 consecutive wins\n\nDon't miss today's premium picks! Follow for daily winners 💰",
+    image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&q=80",
+    likes: 2156,
+    comments: 178,
+    shares: 445,
+    isLiked: false,
+    isBookmarked: false,
+    trending: false
+  },
+  {
+    id: 5,
+    author: "Football News",
+    username: "@footballnews",
+    avatar: "⚽",
+    time: "10h ago",
+    content: "🏆 Champions League Tonight!\n\n🔴 Liverpool vs Real Madrid\n🔵 Bayern vs PSG\n\nBoth games LIVE on BetNextGen!\n\nGet 100% deposit bonus + free live stream access 📺",
+    image: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80",
+    likes: 4392,
+    comments: 267,
+    shares: 891,
+    isLiked: false,
+    isBookmarked: true,
+    trending: true
+  }
+];
+
+// Helper function to format numbers
+function formatNumber(num) {
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  }
+  return num.toString();
+}
+
+// Create post HTML
+function createPostHTML(post) {
+  return `
+    <div class="post-card" data-post-id="${post.id}">
+      ${post.trending ? `
+        <div class="trending-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+          TRENDING
+        </div>
+      ` : ''}
+      
+      <div class="post-header">
+        <div class="post-avatar">${post.avatar}</div>
+        <div class="post-author-info">
+          <div class="post-author-line">
+            <span class="post-author-name">${post.author}</span>
+            <span class="post-username">${post.username}</span>
+            <span class="post-time">• ${post.time}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="post-content">${post.content}</div>
+
+      ${post.image ? `
+        <div class="post-image">
+          <img src="${post.image}" alt="Post image" loading="lazy">
+        </div>
+      ` : ''}
+
+      <div class="post-engagement">
+        <button class="engagement-btn like-btn ${post.isLiked ? 'liked' : ''}" data-action="like">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${post.isLiked ? '#ef4444' : 'none'}" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          <span class="like-count">${formatNumber(post.likes)}</span>
+        </button>
+
+       <button class="engagement-btn comment-btn post-comment-btn-trigger" data-action="comment">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+         </svg>
+        ${post.comments}
+       </button>
+
+        <button class="engagement-btn share-btn" data-action="share">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 7 23 1 17 1"></polyline>
+            <line x1="16" y1="8" x2="23" y2="1"></line>
+            <polyline points="23 17 23 23 1 23 1 7 7 7"></polyline>
+          </svg>
+          ${post.shares}
+        </button>
+
+        <button class="bookmark-btn ${post.isBookmarked ? 'bookmarked' : ''}" data-action="bookmark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${post.isBookmarked ? '#ffd34d' : 'none'}" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Share Modal Functionality
+const shareModal = document.getElementById('shareModal');
+const closeShareModal = document.getElementById('closeShareModal');
+const copyLinkBtn = document.getElementById('copyLinkBtn');
+const shareLinkInput = document.getElementById('shareLinkInput');
+let currentSharePostId = null;
+
+// Open share modal
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.share-btn')) {
+    const postCard = e.target.closest('.post-card');
+    const postId = postCard.dataset.postId;
+    const post = postsData.find(p => p.id === parseInt(postId));
+
+    if (post) {
+      currentSharePostId = postId;
+      openShareModal(post);
+    }
+  }
+});
+
+function openShareModal(post) {
+  // Generate share URL
+  const shareUrl = `https://betnextgen.com/post/${post.id}`;
+  shareLinkInput.value = shareUrl;
+
+  // Show post preview
+  document.getElementById('sharePostPreview').innerHTML = `
+    <strong>${post.author}</strong>: ${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}
+  `;
+
+  shareModal.classList.remove('hidden');
+}
+
+// Close modal
+closeShareModal?.addEventListener('click', () => {
+  shareModal.classList.add('hidden');
+});
+
+shareModal?.querySelector('.share-modal-overlay')?.addEventListener('click', () => {
+  shareModal.classList.add('hidden');
+});
+
+// Copy link
+copyLinkBtn?.addEventListener('click', () => {
+  shareLinkInput.select();
+  document.execCommand('copy');
+
+  copyLinkBtn.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    Copied!
+  `;
+
+  setTimeout(() => {
+    copyLinkBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      Copy Link
+    `;
+  }, 2000);
+});
+
+// Handle social sharing
+document.querySelectorAll('.share-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const platform = btn.dataset.share;
+    const shareUrl = shareLinkInput.value;
+    const post = postsData.find(p => p.id === parseInt(currentSharePostId));
+    const text = `Check out this post on BetNextGen: ${post.content.substring(0, 100)}...`;
+
+    let url;
+    switch (platform) {
+      case 'facebook':
+        url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+        break;
+      case 'twitter':
+        url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+        break;
+      case 'whatsapp':
+        url = `https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`;
+        break;
+      case 'telegram':
+        url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+        break;
+    }
+
+    window.open(url, '_blank', 'width=600,height=400');
+  });
+});
+
+// Render all posts
+function renderPosts() {
+  const container = document.getElementById('postsContainer');
+  container.innerHTML = postsData.map(post => createPostHTML(post)).join('');
+  attachEventListeners();
+}
+
+// Handle like button click
+function handleLike(postId) {
+  const post = postsData.find(p => p.id === postId);
+  if (post) {
+    post.isLiked = !post.isLiked;
+    post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
+
+    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+    const likeBtn = postCard.querySelector('.like-btn');
+    const likeCount = likeBtn.querySelector('.like-count');
+    const likeSvg = likeBtn.querySelector('svg');
+
+    if (post.isLiked) {
+      likeBtn.classList.add('liked');
+      likeSvg.setAttribute('fill', '#ef4444');
+    } else {
+      likeBtn.classList.remove('liked');
+      likeSvg.setAttribute('fill', 'none');
+    }
+
+    likeCount.textContent = formatNumber(post.likes);
+  }
+}
+
+// Handle bookmark button click
+function handleBookmark(postId) {
+  const post = postsData.find(p => p.id === postId);
+  if (post) {
+    post.isBookmarked = !post.isBookmarked;
+
+    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+    const bookmarkBtn = postCard.querySelector('.bookmark-btn');
+    const bookmarkSvg = bookmarkBtn.querySelector('svg');
+
+    if (post.isBookmarked) {
+      bookmarkBtn.classList.add('bookmarked');
+      bookmarkSvg.setAttribute('fill', '#ffd34d');
+    } else {
+      bookmarkBtn.classList.remove('bookmarked');
+      bookmarkSvg.setAttribute('fill', 'none');
+    }
+  }
+}
+
+// Attach event listeners to all buttons
+function attachEventListeners() {
+  document.querySelectorAll('.like-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const postId = parseInt(btn.closest('.post-card').dataset.postId);
+      handleLike(postId);
+    });
+  });
+
+  document.querySelectorAll('.bookmark-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const postId = parseInt(btn.closest('.post-card').dataset.postId);
+      handleBookmark(postId);
+    });
+  });
+
+  document.querySelectorAll('.comment-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const postId = parseInt(btn.closest('.post-card').dataset.postId);
+      document.getElementById('commentModal').classList.remove('hidden');
+    });
+  });
+
+}
+
+// Load more posts
+document.getElementById('loadMoreBtn')?.addEventListener('click', () => {
+  alert('Loading more posts...');
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+  renderPosts();
+});
+
+// Casino Carousel
+const casinoTrack = document.getElementById('casinoTrack');
+const casinoPrev = document.getElementById('casinoPrev');
+const casinoNext = document.getElementById('casinoNext');
+
+if (casinoPrev && casinoNext && casinoTrack) {
+  casinoPrev.addEventListener('click', () => {
+    casinoTrack.scrollBy({ left: -300, behavior: 'smooth' });
+  });
+
+  casinoNext.addEventListener('click', () => {
+    casinoTrack.scrollBy({ left: 300, behavior: 'smooth' });
+  });
+}
+
+// Get prediction - CLEANER VERSION
+if (getPredictionBtn) {
+  getPredictionBtn.addEventListener('click', () => {
+    if (!selectedEvent) return;
+
+    // Simulate API call
+    setTimeout(() => {
+      // Calculate prediction data
+      const homePercent = Math.floor(Math.random() * 40) + 45;
+      const awayPercent = 100 - homePercent;
+      const totalBets = Math.floor(Math.random() * 1000) + 500;
+      const homeBets = Math.floor((homePercent / 100) * totalBets);
+      const awayBets = totalBets - homeBets;
+
+      // Update HTML elements (NO HTML CODE IN JS!)
+      document.getElementById('totalBetsCount').textContent = `Based on ${totalBets.toLocaleString()} bets`;
+
+      document.getElementById('homeTeamName').textContent = `${selectedEvent.home} (Home)`;
+      document.getElementById('homePercent').textContent = `${homePercent}%`;
+      document.getElementById('homeBar').style.width = `${homePercent}%`;
+      document.getElementById('homeBetsCount').textContent = `${homeBets.toLocaleString()} customers predict home win`;
+
+      document.getElementById('awayTeamName').textContent = `${selectedEvent.away} (Away)`;
+      document.getElementById('awayPercent').textContent = `${awayPercent}%`;
+      document.getElementById('awayBar').style.width = `${awayPercent}%`;
+      document.getElementById('awayBetsCount').textContent = `${awayBets.toLocaleString()} customers predict away win`;
+
+      const winner = homePercent > awayPercent ? selectedEvent.home : selectedEvent.away;
+      document.getElementById('aiRecommendation').innerHTML = `
+        <strong>AI Suggests:</strong> ${homePercent > awayPercent ? 'Home' : 'Away'} Win (${winner}) has higher probability based on customer predictions
+      `;
+
+      // Show results
+      aiPredictionResults.classList.remove('hidden');
+      getPredictionBtn.classList.add('hidden');
+
+      toast('AI prediction generated!');
+    }, 800);
+  });
+}
+
+// Render My Bets
+// Render My Bets
+function renderMyBets() {
+  const unsettled = userBets.filter(b => b.status === 'unsettled');
+  const settled = userBets.filter(b => b.status === 'settled');
+
+  document.getElementById('unsettled-content').innerHTML = unsettled.length
+    ? unsettled.map((bet, index) => `
+        <div class="bet-card">
+          <div class="bet-header">
+            <div class="bet-type">${bet.type.toUpperCase()}</div>
+            <button class="cancel-bet-btn" data-bet-index="${index}" title="Cancel Bet">×</button>
+          </div>
+          ${bet.selections.map(s => `<div class="bet-match">${s.match} - ${s.market} @ ${s.odds}</div>`).join('')}
+          <div class="bet-details">
+            <span>Stake: ${bet.stake.toFixed(2)} лв</span>
+            <span>Odds: ${bet.totalOdds.toFixed(2)}</span>
+            <span>Potential: ${bet.potentialWin.toFixed(2)} лв</span>
+          </div>
+        </div>
+      `).join('')
+    : '<p class="empty-state">No unsettled bets</p>';
+
+  document.getElementById('settled-content').innerHTML = settled.length
+    ? settled.map(bet => `
+        <div class="bet-card">
+          <div class="bet-type">${bet.type.toUpperCase()}</div>
+          ${bet.selections.map(s => `<div class="bet-match">${s.match} - ${s.market} @ ${s.odds}</div>`).join('')}
+          <div class="bet-details">
+            <span>Stake: ${bet.stake.toFixed(2)} лв</span>
+            <span>Result: ${bet.result || 'Pending'}</span>
+          </div>
+        </div>
+      `).join('')
+    : '<p class="empty-state">No settled bets</p>';
+
+  // ✅ ADD EVENT LISTENERS FOR CANCEL BUTTONS
+  attachCancelListeners();
+}
+// Handle cancel bet button clicks
+function attachCancelListeners() {
+  document.querySelectorAll('.cancel-bet-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const betIndex = parseInt(btn.dataset.betIndex);
+
+      // Confirm cancellation
+      if (confirm('Are you sure you want to cancel this bet?')) {
+        const canceledBet = userBets[betIndex];
+
+        // Refund stake to balance
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        currentUser.balance = (currentUser.balance || 0) + canceledBet.stake;
+        currentUser.withdrawable = (currentUser.withdrawable || 0) + canceledBet.stake;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+        // Remove bet from array
+        userBets.splice(betIndex, 1);
+        localStorage.setItem('userBets', JSON.stringify(userBets));
+
+        // Update UI
+        updateProfileDisplay();
+        renderMyBets();
+        toast('Bet canceled and stake refunded!');
+      }
+    });
+  });
+}
+
+// ✅ UPDATED - Bet Streak Counter with Stats & Milestones
+function updateBetStreak() {
+  const streak = JSON.parse(localStorage.getItem('betStreak')) || {
+    wins: 0,
+    total: 0,
+    target: 10
+  };
+
+  const percentage = (streak.wins / streak.target) * 100;
+
+  // Update streak count and bar
+  const streakCount = document.querySelector('.streak-count');
+  const streakBar = document.querySelector('.streak-bar');
+
+  if (streakCount) streakCount.textContent = `${streak.wins}/${streak.target}`;
+  if (streakBar) streakBar.style.width = `${percentage}%`;
+
+  // Update next reward
+  const nextReward = streak.target - streak.wins;
+  const rewardText = document.querySelector('.reward-text');
+  if (rewardText) {
+    if (nextReward > 0) {
+      rewardText.textContent = `${nextReward} more wins to unlock €25 Free Bet!`;
+    } else {
+      rewardText.textContent = `🎉 Reward unlocked! Claim your €25 Free Bet`;
+    }
+  }
+
+  // ✅ NEW - Update stats and milestones
+  updateStreakStats();
+}
+
+// ✅ NEW - Update streak statistics
+function updateStreakStats() {
+  const streak = JSON.parse(localStorage.getItem('betStreak')) || { wins: 0, total: 0 };
+  const winRate = streak.total > 0 ? Math.round((streak.wins / streak.total) * 100) : 0;
+
+  // Update stats display
+  const totalWinsEl = document.getElementById('totalWins');
+  const winRateEl = document.getElementById('winRate');
+
+  if (totalWinsEl) totalWinsEl.textContent = streak.wins;
+  if (winRateEl) winRateEl.textContent = `${winRate}%`;
+
+  // Update milestones
+  updateMilestones(streak.wins);
+}
+
+// ✅ NEW - Update milestone badges
+function updateMilestones(wins) {
+  const bronze = document.getElementById('bronzeMilestone');
+  const silver = document.getElementById('silverMilestone');
+  const gold = document.getElementById('goldMilestone');
+
+  // Bronze (5 wins)
+  if (bronze) {
+    if (wins >= 5) {
+      bronze.classList.remove('locked');
+      bronze.classList.add('unlocked');
+      bronze.querySelector('.milestone-badge').textContent = '✅';
+    } else {
+      bronze.classList.add('locked');
+      bronze.classList.remove('unlocked');
+      bronze.querySelector('.milestone-badge').textContent = '🔒';
+    }
+  }
+
+  // Silver (10 wins)
+  if (silver) {
+    if (wins >= 10) {
+      silver.classList.remove('locked');
+      silver.classList.add('unlocked');
+      silver.querySelector('.milestone-badge').textContent = '✅';
+    } else {
+      silver.classList.add('locked');
+      silver.classList.remove('unlocked');
+      silver.querySelector('.milestone-badge').textContent = '🔒';
+    }
+  }
+
+  // Gold (20 wins)
+  if (gold) {
+    if (wins >= 20) {
+      gold.classList.remove('locked');
+      gold.classList.add('unlocked');
+      gold.querySelector('.milestone-badge').textContent = '✅';
+
+      // Extra celebration for gold
+      if (wins === 20) {
+        toast('🏆 GOLD STATUS ACHIEVED! You are a legend!');
+      }
+    } else {
+      gold.classList.add('locked');
+      gold.classList.remove('unlocked');
+      gold.querySelector('.milestone-badge').textContent = '🔒';
+    }
+  }
+}
+
+// ✅ KEEP - Call when user places/wins bet
+function recordBetResult(isWin) {
+  const streak = JSON.parse(localStorage.getItem('betStreak')) || { wins: 0, total: 0, target: 10 };
+
+  if (isWin) {
+    streak.wins++;
+    if (streak.wins >= streak.target) {
+      toast('🎉 Streak complete! €25 Free Bet unlocked!');
+      // Reset after reward
+      streak.wins = 0;
+    }
+
+    // Show milestone notifications
+    if (streak.wins === 5) {
+      toast('🥉 Bronze Bettor unlocked!');
+    } else if (streak.wins === 10) {
+      toast('🥈 Silver Bettor unlocked!');
+    }
+  }
+  streak.total++;
+
+  localStorage.setItem('betStreak', JSON.stringify(streak));
+  updateBetStreak();
+}
+
+document.addEventListener('DOMContentLoaded', updateBetStreak);
+
+// Live Stats Dashboard - Auto-update
+function updateLiveStats() {
+  // Simulate real-time updates
+  const onlineUsers = Math.floor(Math.random() * 5000) + 10000;
+  const winnings = Math.floor(Math.random() * 100000) + 400000;
+  const activeBets = Math.floor(Math.random() * 3000) + 7000;
+
+  document.getElementById('onlineUsers').textContent = onlineUsers.toLocaleString();
+  document.getElementById('todayWinnings').textContent = `€${winnings.toLocaleString()}`;
+  document.getElementById('activeBets').textContent = activeBets.toLocaleString();
+
+  // Animate numbers
+  animateValue('onlineUsers', onlineUsers - 100, onlineUsers, 1000);
+}
+
+function animateValue(id, start, end, duration) {
+  const element = document.getElementById(id);
+  if (!element) return;
+
+  const range = end - start;
+  const increment = range / (duration / 16);
+  let current = start;
+
+  const timer = setInterval(() => {
+    current += increment;
+    if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+      current = end;
+      clearInterval(timer);
+    }
+    element.textContent = Math.floor(current).toLocaleString();
+  }, 16);
+}
+
+// Update every 10 seconds
+setInterval(updateLiveStats, 10000);
+document.addEventListener('DOMContentLoaded', updateLiveStats);
+
+// Recent Winners Feed
+const recentWinners = [
+  { name: 'John D.', amount: 2450, bet: 'Arsenal vs Chelsea - Home Win', initial: 'JD' },
+  { name: 'Sarah M.', amount: 890, bet: 'Lakers ML - Full Time', initial: 'SM' },
+  { name: 'Mike K.', amount: 5200, bet: '5-Leg Parlay - All Winners', initial: 'MK' },
+  { name: 'Emma R.', amount: 1750, bet: 'Barcelona vs Real Madrid - Over 2.5', initial: 'ER' },
+  { name: 'David L.', amount: 3100, bet: 'Tennis Combo - 3 Selections', initial: 'DL' }
+];
+
+function renderRecentWinners() {
+  const feed = document.getElementById('winnersFeed');
+  if (!feed) return;
+
+  feed.innerHTML = recentWinners.map(winner => `
+    <div class="winner-card">
+      <div class="winner-avatar">${winner.initial}</div>
+      <div class="winner-info">
+        <div class="winner-name">${winner.name}</div>
+        <div class="winner-bet">${winner.bet}</div>
+      </div>
+      <div class="winner-amount">€${winner.amount.toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+// Add new winner dynamically (call this when someone wins)
+function addNewWinner(winner) {
+  recentWinners.unshift(winner);
+  if (recentWinners.length > 5) {
+    recentWinners.pop();
+  }
+  renderRecentWinners();
+}
+
+document.addEventListener('DOMContentLoaded', renderRecentWinners);
